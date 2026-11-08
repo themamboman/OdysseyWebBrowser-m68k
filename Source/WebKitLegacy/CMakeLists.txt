@@ -67,6 +67,14 @@ if (MSVC)
 endif ()
 
 if (${PORT} STREQUAL "MUI")
-    string(TIMESTAMP BUILD_DATE "%d.%m.%Y")
-    add_definitions(-DOWB_BUILD_DATE="${BUILD_DATE}")
+    # owb_buildinfo.h (OWB_BUILD_DATE, OWB_GIT_COMMIT) is regenerated at every build, not only
+    # at configure time, so the version users see is always current.
+    set(OWB_BUILDINFO_DIR "${CMAKE_BINARY_DIR}/DerivedSources/OWB")
+    add_custom_target(OWBBuildInfo ALL
+        COMMAND ${CMAKE_COMMAND} -DSRC=${CMAKE_SOURCE_DIR} -DOUT=${OWB_BUILDINFO_DIR}/owb_buildinfo.h
+            -P ${CMAKE_SOURCE_DIR}/Source/cmake/OWBBuildInfo.cmake
+        BYPRODUCTS ${OWB_BUILDINFO_DIR}/owb_buildinfo.h
+        COMMENT "Updating OWB build info")
+    add_dependencies(WebKitLegacy OWBBuildInfo)
+    target_include_directories(WebKitLegacy PRIVATE ${OWB_BUILDINFO_DIR})
 endif ()
