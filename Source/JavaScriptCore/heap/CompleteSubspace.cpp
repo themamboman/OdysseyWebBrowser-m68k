@@ -35,6 +35,12 @@
 #include "PreventCollectionScope.h"
 #include "SubspaceInlines.h"
 
+#if defined(__AMIGAOS3__)
+// Source/WTF/wtf/amiga/OutOfMemoryAmiga.cpp: asks the user to retry or stop OWB instead of
+// letting the release assert below abort the whole browser.
+extern "C" bool owbOutOfMemory(size_t size);
+#endif
+
 namespace JSC {
 
 CompleteSubspace::CompleteSubspace(CString name, Heap& heap, HeapCellType* heapCellType, AlignedMemoryAllocator* alignedMemoryAllocator)
@@ -115,6 +121,10 @@ Allocator CompleteSubspace::allocatorForSlow(size_t size)
 void* CompleteSubspace::allocateSlow(VM& vm, size_t size, GCDeferralContext* deferralContext, AllocationFailureMode failureMode)
 {
     void* result = tryAllocateSlow(vm, size, deferralContext);
+#if defined(__AMIGAOS3__)
+    while (!result && failureMode == AllocationFailureMode::Assert && owbOutOfMemory(size))
+        result = tryAllocateSlow(vm, size, deferralContext);
+#endif
     if (failureMode == AllocationFailureMode::Assert)
         RELEASE_ASSERT(result);
     return result;

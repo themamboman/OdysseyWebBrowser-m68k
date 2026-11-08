@@ -1584,6 +1584,8 @@ DEFSMETHOD(OWBWindow_LoadURL)
                 if(fileContent)
                 {
                     String content = fileContent;
+                    /* Fill in the real version and build date instead of a hand-edited one. */
+                    content.replace("%OWB_VERSION%", DISPLAY_VERSION " (" OWB_BUILD_DATE ")");
 
                     widget->webView->mainFrame()->loadHTMLString(content.utf8().data(), "about:");
 

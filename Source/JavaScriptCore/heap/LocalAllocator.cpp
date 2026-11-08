@@ -30,6 +30,12 @@
 #include "LocalAllocatorInlines.h"
 #include "Options.h"
 
+#if defined(__AMIGAOS3__)
+// Source/WTF/wtf/amiga/OutOfMemoryAmiga.cpp: asks the user to retry or stop OWB instead of
+// letting the release assert below abort the whole browser.
+extern "C" bool owbOutOfMemory(size_t size);
+#endif
+
 namespace JSC {
 
 LocalAllocator::LocalAllocator(BlockDirectory* directory)
@@ -133,6 +139,10 @@ void* LocalAllocator::allocateSlowCase(GCDeferralContext* deferralContext, Alloc
         return result;
     
     MarkedBlock::Handle* block = m_directory->tryAllocateBlock();
+#if defined(__AMIGAOS3__)
+    while (!block && failureMode == AllocationFailureMode::Assert && owbOutOfMemory(MarkedBlock::blockSize))
+        block = m_directory->tryAllocateBlock();
+#endif
     if (!block) {
         if (failureMode == AllocationFailureMode::Assert)
             RELEASE_ASSERT_NOT_REACHED();

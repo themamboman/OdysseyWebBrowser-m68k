@@ -120,10 +120,23 @@ TryMallocReturnValue tryFastZeroedMalloc(size_t n)
 #endif
 
 #if defined(__AMIGAOS3__)
+#include <exec/memory.h>
+#include <exec/semaphores.h>
+#include <proto/exec.h>
+#endif
+
+#if defined(__AMIGAOS3__)
 // Source/WTF/wtf/amiga/OutOfMemoryAmiga.cpp: WebKit never checks these allocations, so a
 // failure must not return NULL. owbOutOfMemory() asks the user to retry or stop OWB.
 extern "C" bool owbOutOfMemory(size_t size);
 extern "C" bool owbSimulateOutOfMemory(size_t size);
+extern "C" bool owbMemoryTooLow(size_t size);
+// Allocations at least this big check that the system keeps some memory free.
+static constexpr size_t amigaLargeAllocation = 64 * 1024;
+static inline bool amigaRefuse(size_t size)
+{
+    return owbSimulateOutOfMemory(size) || (size >= amigaLargeAllocation && owbMemoryTooLow(size));
+}
 #endif
 
 namespace WTF {
@@ -177,8 +190,153 @@ void fastAlignedFree(void* p)
  * aligned allocator: over-allocate via plain malloc, round up to the
  * requested alignment, and stash the real malloc() pointer just before the
  * aligned pointer so fastAlignedFree can recover and free it correctly. */
+/* JavaScriptCore asks for 16 KB blocks aligned to 16 KB (and 4 KB handle blocks aligned to
+ * 4 KB). Over-allocating each one costs about twice its size, so blocks of that shape come from
+ * a pool instead: regions of about 1 MB are allocated once, aligned once, and handed out block
+ * by block (about 1.5% overhead). A region goes back to the system when all its blocks are free,
+ * keeping one empty region per block size so a page that frees and reallocates doesn't churn.
+ * If a region can't be had, the per-block fallback below is used. */
+struct AmigaAlignedRegion {
+    AmigaAlignedRegion* next;
+    APTR base;
+    ULONG allocationSize;
+    uintptr_t start;
+    size_t blockSize;
+    unsigned blockCount;
+    unsigned used;
+    uint32_t usedMask[2];
+};
+
+static constexpr unsigned amigaMaxBlocksPerRegion = 64;
+static struct SignalSemaphore amigaRegionLock;
+static volatile bool amigaRegionLockInitialized;
+static AmigaAlignedRegion* amigaRegions;
+
+static void amigaEnsureRegionLock()
+{
+    if (amigaRegionLockInitialized)
+        return;
+    Forbid();
+    if (!amigaRegionLockInitialized) {
+        InitSemaphore(&amigaRegionLock);
+        amigaRegionLockInitialized = true;
+    }
+    Permit();
+}
+
+static bool amigaIsPooledShape(size_t alignment, size_t size)
+{
+    return size == alignment && alignment >= 4096 && alignment <= 65536 && !(alignment & (alignment - 1));
+}
+
+static void* amigaTakeBlock(AmigaAlignedRegion* region)
+{
+    for (unsigned i = 0; i < region->blockCount; ++i) {
+        uint32_t bit = 1u << (i & 31);
+        if (!(region->usedMask[i >> 5] & bit)) {
+            region->usedMask[i >> 5] |= bit;
+            region->used++;
+            return reinterpret_cast<void*>(region->start + i * region->blockSize);
+        }
+    }
+    return nullptr;
+}
+
+static void* amigaPoolAlloc(size_t blockSize)
+{
+    amigaEnsureRegionLock();
+    ObtainSemaphore(&amigaRegionLock);
+
+    for (AmigaAlignedRegion* region = amigaRegions; region; region = region->next) {
+        if (region->blockSize == blockSize && region->used < region->blockCount) {
+            void* block = amigaTakeBlock(region);
+            ReleaseSemaphore(&amigaRegionLock);
+            return block;
+        }
+    }
+
+    size_t blockCount = (1024 * 1024) / blockSize;
+    if (blockCount > amigaMaxBlocksPerRegion)
+        blockCount = amigaMaxBlocksPerRegion;
+    ULONG allocationSize = static_cast<ULONG>(blockCount * blockSize + blockSize);
+    if (owbMemoryTooLow(allocationSize)) {
+        ReleaseSemaphore(&amigaRegionLock);
+        return nullptr;
+    }
+    APTR base = AllocMem(allocationSize, MEMF_ANY);
+    auto* region = base ? static_cast<AmigaAlignedRegion*>(AllocMem(sizeof(AmigaAlignedRegion), MEMF_ANY | MEMF_CLEAR)) : nullptr;
+    if (!region) {
+        if (base)
+            FreeMem(base, allocationSize);
+        ReleaseSemaphore(&amigaRegionLock);
+        return nullptr;
+    }
+    region->base = base;
+    region->allocationSize = allocationSize;
+    region->start = (reinterpret_cast<uintptr_t>(base) + blockSize - 1) & ~(static_cast<uintptr_t>(blockSize) - 1);
+    region->blockSize = blockSize;
+    region->blockCount = static_cast<unsigned>(blockCount);
+    region->next = amigaRegions;
+    amigaRegions = region;
+
+    void* block = amigaTakeBlock(region);
+    ReleaseSemaphore(&amigaRegionLock);
+    return block;
+}
+
+// Returns false if p is not a pooled block.
+static bool amigaPoolFree(void* p)
+{
+    if (!amigaRegionLockInitialized)
+        return false;
+    uintptr_t address = reinterpret_cast<uintptr_t>(p);
+    ObtainSemaphore(&amigaRegionLock);
+
+    AmigaAlignedRegion* previous = nullptr;
+    for (AmigaAlignedRegion* region = amigaRegions; region; previous = region, region = region->next) {
+        if (address < region->start || address >= region->start + region->blockCount * region->blockSize)
+            continue;
+        unsigned index = static_cast<unsigned>((address - region->start) / region->blockSize);
+        region->usedMask[index >> 5] &= ~(1u << (index & 31));
+        region->used--;
+
+        if (!region->used) {
+            bool anotherEmpty = false;
+            for (AmigaAlignedRegion* other = amigaRegions; other; other = other->next) {
+                if (other != region && other->blockSize == region->blockSize && !other->used) {
+                    anotherEmpty = true;
+                    break;
+                }
+            }
+            if (anotherEmpty) {
+                if (previous)
+                    previous->next = region->next;
+                else
+                    amigaRegions = region->next;
+                FreeMem(region->base, region->allocationSize);
+                FreeMem(region, sizeof(AmigaAlignedRegion));
+            }
+        }
+        ReleaseSemaphore(&amigaRegionLock);
+        return true;
+    }
+
+    ReleaseSemaphore(&amigaRegionLock);
+    return false;
+}
+
 static void* amigaAlignedMalloc(size_t alignment, size_t size)
 {
+    if (amigaIsPooledShape(alignment, size)) {
+        // A pooled block either comes from an existing region or from a new region, which
+        // checks the free-memory minimum itself; don't fall back to plain malloc below it.
+        if (void* block = amigaPoolAlloc(alignment))
+            return block;
+        if (owbMemoryTooLow(size))
+            return nullptr;
+    } else if (size >= amigaLargeAllocation && owbMemoryTooLow(size))
+        return nullptr;
+
     if (alignment < sizeof(void*))
         alignment = sizeof(void*);
     size_t total = size + alignment - 1 + sizeof(void*);
@@ -194,6 +352,8 @@ static void* amigaAlignedMalloc(size_t alignment, size_t size)
 static void amigaAlignedFree(void* p)
 {
     if (!p)
+        return;
+    if (amigaPoolFree(p))
         return;
     free(reinterpret_cast<void**>(p)[-1]);
 }
@@ -270,6 +430,10 @@ void fastAlignedFree(void* p)
 TryMallocReturnValue tryFastMalloc(size_t n) 
 {
     FAIL_IF_EXCEEDS_LIMIT(n);
+#if defined(__AMIGAOS3__)
+    if (n >= amigaLargeAllocation && owbMemoryTooLow(n))
+        return nullptr;
+#endif
     return malloc(n ? n : 2);
 }
 
@@ -278,7 +442,7 @@ void* fastMalloc(size_t n)
     ASSERT_IS_WITHIN_LIMIT(n);
 retry:
 #if defined(__AMIGAOS3__)
-    void* result = owbSimulateOutOfMemory(n) ? nullptr : malloc(n ? n : 2);
+    void* result = amigaRefuse(n) ? nullptr : malloc(n ? n : 2);
 #else
     void* result = malloc(n ? n : 2);
 #endif
@@ -308,6 +472,10 @@ retry:
 TryMallocReturnValue tryFastCalloc(size_t n_elements, size_t element_size)
 {
     FAIL_IF_EXCEEDS_LIMIT(n_elements * element_size);
+#if defined(__AMIGAOS3__)
+    if (n_elements * element_size >= amigaLargeAllocation && owbMemoryTooLow(n_elements * element_size))
+        return nullptr;
+#endif
     return calloc(n_elements ? n_elements : 1, element_size ? element_size : 2);
 }
 
@@ -316,7 +484,7 @@ void* fastCalloc(size_t n_elements, size_t element_size)
     ASSERT_IS_WITHIN_LIMIT(n_elements * element_size);
 retry:
 #if defined(__AMIGAOS3__)
-    void* result = owbSimulateOutOfMemory(n_elements * element_size) ? nullptr : calloc(n_elements ? n_elements : 1, element_size ? element_size : 2);
+    void* result = amigaRefuse(n_elements * element_size) ? nullptr : calloc(n_elements ? n_elements : 1, element_size ? element_size : 2);
 #else
     void* result = calloc(n_elements ? n_elements : 1, element_size ? element_size : 2);
 #endif
@@ -353,7 +521,7 @@ void* fastRealloc(void* p, size_t n)
     ASSERT_IS_WITHIN_LIMIT(n);
 retry:
 #if defined(__AMIGAOS3__)
-    void* result = owbSimulateOutOfMemory(n) ? nullptr : realloc(p, n ? n : 2);
+    void* result = amigaRefuse(n) ? nullptr : realloc(p, n ? n : 2);
 #else
     void* result = realloc(p, n ? n : 2);
 #endif
@@ -382,6 +550,10 @@ retry:
 TryMallocReturnValue tryFastRealloc(void* p, size_t n)
 {
     FAIL_IF_EXCEEDS_LIMIT(n);
+#if defined(__AMIGAOS3__)
+    if (n >= amigaLargeAllocation && owbMemoryTooLow(n))
+        return nullptr;
+#endif
     return realloc(p, n);
 }
 

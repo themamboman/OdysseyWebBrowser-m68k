@@ -118,6 +118,11 @@
 #include <HistoryController.h>
 #include <WebCore/CookieJar.h>
 #include <WebCore/RuntimeEnabledFeatures.h>
+#include <WebCore/MemoryRelease.h>
+#if defined(__AMIGAOS3__)
+extern "C" void owbStartMemoryWatch(void);
+#endif
+#include <wtf/MemoryPressureHandler.h>
 
 #include <HitTestResult.h>
 #include <IntPoint.h>
@@ -470,6 +475,19 @@ WebView::WebView()
     RuntimeEnabledFeatures::sharedFeatures().setInputTypeColorEnabled(true);
 
     RuntimeEnabledFeatures::sharedFeatures().setCSSLogicalEnabled(true);
+
+    /* Without a low-memory handler, MemoryPressureHandler::releaseMemory() does nothing, so
+       closing a view or running low on memory never pruned caches or collected garbage. */
+    static bool memoryHandlerInstalled;
+    if (!memoryHandlerInstalled) {
+        memoryHandlerInstalled = true;
+        MemoryPressureHandler::singleton().setLowMemoryHandler([] (Critical critical, Synchronous synchronous) {
+            WebCore::releaseMemory(critical, synchronous);
+        });
+#if defined(__AMIGAOS3__)
+        owbStartMemoryWatch(); /* Source/WTF/wtf/amiga/OutOfMemoryAmiga.cpp */
+#endif
+    }
 
     WebFrame* webFrame = WebFrame::createInstance();
     webFrame->initWithWebView(this, m_page);

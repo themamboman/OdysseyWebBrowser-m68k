@@ -880,22 +880,44 @@ double fmod(double x, double y)
 }
 }
 
+/* Source/WTF/wtf/amiga/OutOfMemoryAmiga.cpp: a failed allocation shows a Retry / Stop OWB
+ * requester instead of letting WebKit write through a NULL pointer. */
+#if defined(__AMIGAOS3__)
+extern "C" void owbOutOfMemoryInit(void);
+extern "C" void owbOutOfMemoryNewHandler(void);
+extern "C" void owbOutOfMemoryReleaseReserve(void);
+#endif
+
 /* CRASH() is abort() on this port, and clib2 turns that into a normal exit: destructors run,
  * libraries close, DOSBase = NULL and the code unloads while other threads are still alive, which
  * then crash (Guru). abort() calls raise(SIGABRT) first, in the calling task, so park that task
  * there instead of tearing the process down. */
 static void owbFatalSignal(int sig)
 {
-	(void)sig;
+	/* Tell the user instead of freezing silently. The out-of-memory reserve is released
+	 * first so the requester has room to open; if it still can't, OWB just stops. */
+#if defined(__AMIGAOS3__)
+	owbOutOfMemoryReleaseReserve();
+#endif
+	if (IntuitionBase)
+	{
+		char text[256];
+		snprintf(text, sizeof(text),
+			"OWB has stopped after an internal error (signal %d).\n"
+			"The rest of the system keeps running.\n"
+			"OWB's window will not respond, and its memory stays\n"
+			"in use until you reboot.", sig);
+		struct EasyStruct es;
+		es.es_StructSize = sizeof(es);
+		es.es_Flags = 0;
+		es.es_Title = (CONST_STRPTR)"OWB: internal error";
+		es.es_TextFormat = (CONST_STRPTR)text;
+		es.es_GadgetFormat = (CONST_STRPTR)"OK";
+		EasyRequestArgs(NULL, &es, NULL, NULL);
+	}
 	Wait(0); /* no exit, no teardown */
 }
 
-/* Source/WTF/wtf/amiga/OutOfMemoryAmiga.cpp: a failed allocation shows a Retry / Stop OWB
- * requester instead of letting WebKit write through a NULL pointer. */
-#if defined(__AMIGAOS3__)
-extern "C" void owbOutOfMemoryInit(void);
-extern "C" void owbOutOfMemoryNewHandler(void);
-#endif
 
 int main (int argc, char* argv[])
 {
