@@ -1,0 +1,56 @@
+#ifndef PROTO_EXEC_H
+#define PROTO_EXEC_H
+
+#include "exec/exec.h"
+
+#define PROTO_EXEC_H
+
+/* Function prototypes */
+#define AllocMem(size, flags) AllocMem(size, flags)
+#define FreeMem(memory, size) FreeMem(memory, size)
+#define AllocVec(size, flags) AllocVec(size, flags)
+#define FreeVec(memory) FreeVec(memory)
+#define AllocPooled(poolHeader, size) AllocPooled(poolHeader, size)
+#define FreePooled(poolHeader, memory, size) FreePooled(poolHeader, memory, size)
+#define CreatePool(flags, puddleSize, threshSize) CreatePool(flags, puddleSize, threshSize)
+#define DeletePool(poolHeader) DeletePool(poolHeader)
+#define FindTask(task) FindTask(task)
+#define SetTaskPri(task, priority) SetTaskPri(task, priority)
+#define Signal(task, signals) Signal(task, signals)
+#define Wait(signalMask) Wait(signalMask)
+#define Forbid() Forbid()
+#define Permit() Permit()
+#define Disable() Disable()
+#define Enable() Enable()
+#define AddHead(list, node) AddHead(list, node)
+#define AddTail(list, node) AddTail(list, node)
+#define RemHead(list) RemHead(list)
+#define RemTail(list) RemTail(list)
+#define Remove(node) Remove(node)
+#define Enqueue(list, node) Enqueue(list, node)
+#define FindName(list, name) FindName(list, name)
+#define OpenLibrary(name, version) OpenLibrary(name, version)
+#define CloseLibrary(library) CloseLibrary(library)
+#define OpenDevice(name, unit, ioRequest, flags) OpenDevice(name, unit, ioRequest, flags)
+#define CloseDevice(ioRequest) CloseDevice(ioRequest)
+#define AddIntServer(intNum, interrupt) AddIntServer(intNum, interrupt)
+#define RemIntServer(intNum, interrupt) RemIntServer(intNum, interrupt)
+#define InitSemaphore(semaphore) InitSemaphore(semaphore)
+#define ObtainSemaphore(semaphore) ObtainSemaphore(semaphore)
+#define ReleaseSemaphore(semaphore) ReleaseSemaphore(semaphore)
+#define AttemptSemaphore(semaphore) AttemptSemaphore(semaphore)
+#define CreateMsgPort() CreateMsgPort()
+#define DeleteMsgPort(port) DeleteMsgPort(port)
+#define PutMsg(port, message) PutMsg(port, message)
+#define GetMsg(port) GetMsg(port)
+#define WaitPort(port) WaitPort(port)
+#define ReplyMsg(message) ReplyMsg(message)
+#define AllocEntry(memList) AllocEntry(memList)
+#define FreeEntry(memList) FreeEntry(memList)
+#define CreateTask(name, priority, initialPC, stackSize) CreateTask(name, priority, initialPC, stackSize)
+#define DeleteTask(task) DeleteTask(task)
+#define GetCC() GetCC()
+#define SetCC(cc) SetCC(cc)
+#define CacheControl(address, length, control) CacheControl(address, length, control)
+
+#endif /* PROTO_EXEC_H */

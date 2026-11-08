@@ -89,37 +89,37 @@ DEFGET
 DEFMMETHOD(List_InsertSingle)
 {
     GETDATA;
-    return DoMethodA(data->group, (_Msg_*)msg);
+    return DoMethodA(data->group, (Msg)msg);
 }
 
 DEFMMETHOD(List_Redraw)
 {
     GETDATA;
-    return DoMethodA(data->group, (_Msg_*)msg);
+    return DoMethodA(data->group, (Msg)msg);
 }
 
 DEFSMETHOD(Download_Done)
 {
     GETDATA;
-    return DoMethodA(data->group, (_Msg_*)msg);
+    return DoMethodA(data->group, (Msg)msg);
 }
 
 DEFSMETHOD(Download_Cancelled)
 {
     GETDATA;
-    return DoMethodA(data->group, (_Msg_*)msg);
+    return DoMethodA(data->group, (Msg)msg);
 }
 
 DEFSMETHOD(Download_Error)
 {
     GETDATA;
-    return DoMethodA(data->group, (_Msg_*)msg);
+    return DoMethodA(data->group, (Msg)msg);
 }
 
 DEFSMETHOD(Download_Cancel)
 {
     GETDATA;
-    return DoMethodA(data->group, (_Msg_*)msg);
+    return DoMethodA(data->group, (Msg)msg);
 }
 
 BEGINMTABLE

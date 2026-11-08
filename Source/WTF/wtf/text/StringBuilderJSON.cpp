@@ -118,7 +118,7 @@ void StringBuilder::appendQuotedJSONString(const String& string)
     // This max() is here to allow us to allocate sizes between the range [2^31, 2^32 - 2] because roundUpToPowerOfTwo(1<<31 + some int smaller than 1<<31) == 0.
     // FIXME: roundUpToPowerOfTwo should take Checked<unsigned> and abort if it fails to round up.
     // https://bugs.webkit.org/show_bug.cgi?id=176086
-    allocationSize = std::max(allocationSize, roundUpToPowerOfTwo(allocationSize));
+    allocationSize = std::max(allocationSize, static_cast<unsigned>(roundUpToPowerOfTwo(allocationSize)));
 
     // Allocating this much will definitely fail.
     if (allocationSize > String::MaxLength)

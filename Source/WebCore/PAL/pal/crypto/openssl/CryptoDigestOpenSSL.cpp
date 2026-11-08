@@ -65,6 +65,17 @@ struct SHA512Functions {
 };
 }
 
+#if OS(AMIGA)
+extern "C" void (*owbAmiSSLUseHook)(int begin); /* WTF/wtf/RandomDevice.cpp */
+struct AmiSSLUseScope {
+    AmiSSLUseScope() { if (owbAmiSSLUseHook) owbAmiSSLUseHook(1); }
+    ~AmiSSLUseScope() { if (owbAmiSSLUseHook) owbAmiSSLUseHook(0); }
+};
+#define OWB_AMISSL_SCOPE AmiSSLUseScope amisslUseScope
+#else
+#define OWB_AMISSL_SCOPE
+#endif
+
 namespace PAL {
 
 struct CryptoDigestContext {
@@ -84,17 +95,20 @@ struct CryptoDigestContextImpl : public CryptoDigestContext {
 
     CryptoDigestContextImpl()
     {
+        OWB_AMISSL_SCOPE;
         SHAFunctions::init(&m_context);
     }
 
     void addBytes(const void* input, size_t length) override
     {
+        OWB_AMISSL_SCOPE;
         SHAFunctions::update(&m_context, input, length);
     }
 
     Vector<uint8_t> computeHash() override
     {
         Vector<uint8_t> result(SHAFunctions::digestLength);
+        OWB_AMISSL_SCOPE;
         SHAFunctions::final(result.data(), &m_context);
         return result;
     }

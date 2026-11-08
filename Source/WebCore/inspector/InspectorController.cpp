@@ -90,13 +90,48 @@ namespace WebCore {
 using namespace JSC;
 using namespace Inspector;
 
+/* Diagnostic-only tracing, same pattern as Page::Page -- see the comment
+ * there. The InspectorController constructor has its own large
+ * member-initializer list, and its body (already separate statements)
+ * gets plain printf()s between each agent construction. */
+template<typename T, typename... Args>
+static std::unique_ptr<T> tracedMakeUniqueIC(const char* label, Args&&... args)
+{
+    auto result = std::make_unique<T>(std::forward<Args>(args)...);
+    return result;
+}
+
+static Ref<InstrumentingAgents> tracedInstrumentingAgentsCreate(InspectorEnvironment& environment)
+{
+    auto result = InstrumentingAgents::create(environment);
+    return result;
+}
+
+static Ref<FrontendRouter> tracedFrontendRouterCreate()
+{
+    auto result = FrontendRouter::create();
+    return result;
+}
+
+static Ref<BackendDispatcher> tracedBackendDispatcherCreate(Ref<FrontendRouter>&& router)
+{
+    auto result = BackendDispatcher::create(WTFMove(router));
+    return result;
+}
+
+static Ref<Stopwatch> tracedStopwatchCreate()
+{
+    auto result = Stopwatch::create();
+    return result;
+}
+
 InspectorController::InspectorController(Page& page, InspectorClient* inspectorClient)
-    : m_instrumentingAgents(InstrumentingAgents::create(*this))
-    , m_injectedScriptManager(std::make_unique<WebInjectedScriptManager>(*this, WebInjectedScriptHost::create()))
-    , m_frontendRouter(FrontendRouter::create())
-    , m_backendDispatcher(BackendDispatcher::create(m_frontendRouter.copyRef()))
-    , m_overlay(std::make_unique<InspectorOverlay>(page, inspectorClient))
-    , m_executionStopwatch(Stopwatch::create())
+    : m_instrumentingAgents(tracedInstrumentingAgentsCreate(*this))
+    , m_injectedScriptManager(tracedMakeUniqueIC<WebInjectedScriptManager>("WebInjectedScriptManager", *this, WebInjectedScriptHost::create()))
+    , m_frontendRouter(tracedFrontendRouterCreate())
+    , m_backendDispatcher(tracedBackendDispatcherCreate(m_frontendRouter.copyRef()))
+    , m_overlay(tracedMakeUniqueIC<InspectorOverlay>("InspectorOverlay", page, inspectorClient))
+    , m_executionStopwatch(tracedStopwatchCreate())
     , m_scriptDebugServer(page)
     , m_page(page)
     , m_inspectorClient(inspectorClient)

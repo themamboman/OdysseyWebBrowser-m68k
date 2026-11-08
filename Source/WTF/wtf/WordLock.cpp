@@ -31,9 +31,46 @@
 #include <thread>
 #include <wtf/Threading.h>
 
+#if OS(AMIGA)
+extern "C" {
+#include "multitask_lib.h"
+}
+#endif
+
 namespace WTF {
 
 namespace {
+
+#if OS(AMIGA)
+class ParkingMutex {
+public:
+    ParkingMutex() { MyMutexInit(&m_mutex); }
+    ~ParkingMutex() { MyMutexDestroy(&m_mutex); }
+
+    void lock() { MyMutexLock(&m_mutex); }
+    void unlock() { MyMutexUnlock(&m_mutex); }
+
+    struct MyMutex m_mutex;
+};
+
+class ParkingCondition {
+public:
+    ParkingCondition() { MyConditionInit(&m_condition); }
+    ~ParkingCondition() { MyConditionDestroy(&m_condition); }
+
+    void wait(std::unique_lock<ParkingMutex>& locker)
+    {
+        MyConditionWait(&locker.mutex()->m_mutex, &m_condition);
+    }
+
+    void notify_one() { MyConditionSignal(&m_condition); }
+
+    struct MyCondition m_condition;
+};
+#else
+using ParkingMutex = std::mutex;
+using ParkingCondition = std::condition_variable;
+#endif
 
 // This data structure serves three purposes:
 //
@@ -48,8 +85,8 @@ namespace {
 struct ThreadData {
     // The parking mechanism.
     bool shouldPark { false };
-    std::mutex parkingLock;
-    std::condition_variable parkingCondition;
+    ParkingMutex parkingLock;
+    ParkingCondition parkingCondition;
 
     // The queue node.
     ThreadData* nextInQueue { nullptr };
@@ -144,7 +181,7 @@ NEVER_INLINE void WordLock::lockSlow()
         // releasing thread holds me's parkingLock.
 
         {
-            std::unique_lock<std::mutex> locker(me.parkingLock);
+            std::unique_lock<ParkingMutex> locker(me.parkingLock);
             while (me.shouldPark)
                 me.parkingCondition.wait(locker);
         }
@@ -236,7 +273,7 @@ NEVER_INLINE void WordLock::unlockSlow()
     {
         // Be sure to hold the lock across our call to notify_one() because a spurious wakeup could
         // cause the thread at the head of the queue to exit and delete queueHead.
-        std::lock_guard<std::mutex> locker(queueHead->parkingLock);
+        std::lock_guard<ParkingMutex> locker(queueHead->parkingLock);
         queueHead->shouldPark = false;
 
         // Doesn't matter if we notify_all() or notify_one() here since the only thread that could be
@@ -248,4 +285,3 @@ NEVER_INLINE void WordLock::unlockSlow()
 }
 
 } // namespace WTF
-

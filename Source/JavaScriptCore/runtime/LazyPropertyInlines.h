@@ -46,7 +46,9 @@ void LazyProperty<OwnerType, ElementType>::initLater(const Func&)
     // may be used for things. We address this problem by indirecting through a global const
     // variable. The "theFunc" variable is guaranteed to be native-aligned, i.e. at least a
     // multiple of 4.
-    static const FuncType theFunc = callFunc<Func>;
+    // m68k only aligns pointers to 2 bytes, so a plain static can sit at an address ending in 2,
+    // which collides with initializingTag: get() then masks it off and reads a pointer 2 bytes early.
+    alignas(4) static const FuncType theFunc = callFunc<Func>;
     m_pointer = lazyTag | bitwise_cast<uintptr_t>(&theFunc);
 }
 

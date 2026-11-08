@@ -31,6 +31,8 @@
 
 /* public */
 #include <mui/Listtree_mcc.h>
+#include <proto/intuition.h>
+#include <proto/utility.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

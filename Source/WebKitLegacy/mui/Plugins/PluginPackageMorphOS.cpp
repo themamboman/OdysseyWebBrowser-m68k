@@ -38,7 +38,7 @@
 
 #define MIN_PLUGIN_VERSION 2
 
-#if !OS(AROS)
+#if !OS(AROS) && !defined(__AMIGAOS3__)
 #include <ppcinline/macros.h>
 #define PLUGIN_BASE_NAME this->m_module
 
@@ -65,7 +65,7 @@ namespace WebCore {
 
 bool PluginPackage::fetchInfo()
 {
-#if !OS(AROS)
+#if !OS(AROS) && !defined(__AMIGAOS3__)
     if (!load())
         return false;
 
@@ -146,7 +146,7 @@ bool PluginPackage::equal(const PluginPackage& a, const PluginPackage& b)
 
 bool PluginPackage::load()
 {
-#if !OS(AROS)
+#if !OS(AROS) && !defined(__AMIGAOS3__)
     char cmodule[512];
 
     if (m_isLoaded) {
@@ -196,7 +196,7 @@ bool PluginPackage::load()
 
 void PluginPackage::unload()
 {
-#if !OS(AROS)
+#if !OS(AROS) && !defined(__AMIGAOS3__)
     if (!m_isLoaded)
         return;
 

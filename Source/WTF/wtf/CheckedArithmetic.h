@@ -541,6 +541,230 @@ template <typename ResultType> struct ArithmeticOperations<unsigned, int, Result
     }
 };
 
+template <typename ResultType> struct ArithmeticOperations<unsigned long, int, ResultType, false, true> {
+    static inline bool add(int64_t lhs, int64_t rhs, ResultType& result)
+    {
+        return ArithmeticOperations<int, unsigned long, ResultType>::add(rhs, lhs, result);
+    }
+    
+    static inline bool sub(int64_t lhs, int64_t rhs, ResultType& result)
+    {
+        return ArithmeticOperations<int, unsigned long, ResultType>::sub(lhs, rhs, result);
+    }
+
+    static inline bool multiply(int64_t lhs, int64_t rhs, ResultType& result)
+    {
+        return ArithmeticOperations<int, unsigned long, ResultType>::multiply(lhs, rhs, result);
+    }
+
+    static inline bool equals(unsigned long lhs, int rhs)
+    {
+        return ArithmeticOperations<int, unsigned long, ResultType>::equals(rhs, lhs);
+    }
+};
+
+template <typename ResultType> struct ArithmeticOperations<int, unsigned long, ResultType, true, false> {
+    static inline bool add(int64_t lhs, int64_t rhs, ResultType& result)
+    {
+#if COMPILER(GCC_COMPATIBLE)
+        ResultType temp;
+        if (__builtin_add_overflow(lhs, rhs, &temp))
+            return false;
+        result = temp;
+        return true;
+#else
+        int64_t temp = lhs + rhs;
+        if (temp < std::numeric_limits<ResultType>::min())
+            return false;
+        if (temp > std::numeric_limits<ResultType>::max())
+            return false;
+        result = static_cast<ResultType>(temp);
+        return true;
+#endif
+    }
+    
+    static inline bool sub(int64_t lhs, int64_t rhs, ResultType& result)
+    {
+#if COMPILER(GCC_COMPATIBLE)
+        ResultType temp;
+        if (__builtin_sub_overflow(lhs, rhs, &temp))
+            return false;
+        result = temp;
+        return true;
+#else
+        int64_t temp = lhs - rhs;
+        if (temp < std::numeric_limits<ResultType>::min())
+            return false;
+        if (temp > std::numeric_limits<ResultType>::max())
+            return false;
+        result = static_cast<ResultType>(temp);
+        return true;
+#endif
+    }
+
+    static inline bool multiply(int64_t lhs, int64_t rhs, ResultType& result)
+    {
+#if COMPILER(GCC_COMPATIBLE)
+        ResultType temp;
+        if (__builtin_mul_overflow(lhs, rhs, &temp))
+            return false;
+        result = temp;
+        return true;
+#else
+        int64_t temp = lhs * rhs;
+        if (temp < std::numeric_limits<ResultType>::min())
+            return false;
+        if (temp > std::numeric_limits<ResultType>::max())
+            return false;
+        result = static_cast<ResultType>(temp);
+        return true;
+#endif
+    }
+
+    static inline bool equals(int lhs, unsigned long rhs)
+    {
+        return static_cast<int64_t>(lhs) == static_cast<int64_t>(rhs);
+    }
+};
+
+template <typename ResultType> struct ArithmeticOperations<unsigned long, unsigned, ResultType, false, false> {
+    static inline bool add(int64_t lhs, int64_t rhs, ResultType& result)
+    {
+#if COMPILER(GCC_COMPATIBLE)
+        ResultType temp;
+        if (__builtin_add_overflow(lhs, rhs, &temp))
+            return false;
+        result = temp;
+        return true;
+#else
+        int64_t temp = lhs + rhs;
+        if (temp < 0 || temp > std::numeric_limits<ResultType>::max())
+            return false;
+        result = static_cast<ResultType>(temp);
+        return true;
+#endif
+    }
+    
+    static inline bool sub(int64_t lhs, int64_t rhs, ResultType& result)
+    {
+#if COMPILER(GCC_COMPATIBLE)
+        ResultType temp;
+        if (__builtin_sub_overflow(lhs, rhs, &temp))
+            return false;
+        result = temp;
+        return true;
+#else
+        int64_t temp = lhs - rhs;
+        if (temp < 0 || temp > std::numeric_limits<ResultType>::max())
+            return false;
+        result = static_cast<ResultType>(temp);
+        return true;
+#endif
+    }
+
+    static inline bool multiply(int64_t lhs, int64_t rhs, ResultType& result)
+    {
+#if COMPILER(GCC_COMPATIBLE)
+        ResultType temp;
+        if (__builtin_mul_overflow(lhs, rhs, &temp))
+            return false;
+        result = temp;
+        return true;
+#else
+        int64_t temp = lhs * rhs;
+        if (temp < 0 || temp > std::numeric_limits<ResultType>::max())
+            return false;
+        result = static_cast<ResultType>(temp);
+        return true;
+#endif
+    }
+
+    static inline bool equals(unsigned long lhs, unsigned rhs)
+    {
+        return lhs == rhs;
+    }
+};
+
+template <typename ResultType> struct ArithmeticOperations<unsigned, unsigned long, ResultType, false, false> {
+    static inline bool add(int64_t lhs, int64_t rhs, ResultType& result)
+    {
+        return ArithmeticOperations<unsigned long, unsigned, ResultType>::add(rhs, lhs, result);
+    }
+    
+    static inline bool sub(int64_t lhs, int64_t rhs, ResultType& result)
+    {
+        return ArithmeticOperations<unsigned long, unsigned, ResultType>::sub(lhs, rhs, result);
+    }
+
+    static inline bool multiply(int64_t lhs, int64_t rhs, ResultType& result)
+    {
+        return ArithmeticOperations<unsigned long, unsigned, ResultType>::multiply(lhs, rhs, result);
+    }
+
+    static inline bool equals(unsigned lhs, unsigned long rhs)
+    {
+        return ArithmeticOperations<unsigned long, unsigned, ResultType>::equals(rhs, lhs);
+    }
+};
+
+template <typename ResultType> struct ArithmeticOperations<unsigned long, unsigned long, ResultType, false, false> {
+    static inline bool add(int64_t lhs, int64_t rhs, ResultType& result)
+    {
+#if COMPILER(GCC_COMPATIBLE)
+        ResultType temp;
+        if (__builtin_add_overflow(lhs, rhs, &temp))
+            return false;
+        result = temp;
+        return true;
+#else
+        int64_t temp = lhs + rhs;
+        if (temp < 0 || temp > std::numeric_limits<ResultType>::max())
+            return false;
+        result = static_cast<ResultType>(temp);
+        return true;
+#endif
+    }
+    
+    static inline bool sub(int64_t lhs, int64_t rhs, ResultType& result)
+    {
+#if COMPILER(GCC_COMPATIBLE)
+        ResultType temp;
+        if (__builtin_sub_overflow(lhs, rhs, &temp))
+            return false;
+        result = temp;
+        return true;
+#else
+        int64_t temp = lhs - rhs;
+        if (temp < 0 || temp > std::numeric_limits<ResultType>::max())
+            return false;
+        result = static_cast<ResultType>(temp);
+        return true;
+#endif
+    }
+
+    static inline bool multiply(int64_t lhs, int64_t rhs, ResultType& result)
+    {
+#if COMPILER(GCC_COMPATIBLE)
+        ResultType temp;
+        if (__builtin_mul_overflow(lhs, rhs, &temp))
+            return false;
+        result = temp;
+        return true;
+#else
+        int64_t temp = lhs * rhs;
+        if (temp < 0 || temp > std::numeric_limits<ResultType>::max())
+            return false;
+        result = static_cast<ResultType>(temp);
+        return true;
+#endif
+    }
+
+    static inline bool equals(unsigned long lhs, unsigned long rhs)
+    {
+        return lhs == rhs;
+    }
+};
+
 template <class OverflowHandler, typename = std::enable_if_t<!std::is_scalar<OverflowHandler>::value>>
 inline constexpr bool observesOverflow() { return true; }
 

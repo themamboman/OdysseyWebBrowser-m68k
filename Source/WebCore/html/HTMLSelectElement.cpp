@@ -228,7 +228,7 @@ ExceptionOr<void> HTMLSelectElement::add(const OptionOrOptGroupElement& element,
     if (before) {
         beforeElement = WTF::switchOn(before.value(),
             [](const RefPtr<HTMLElement>& element) -> HTMLElement* { return element.get(); },
-            [this](int index) -> HTMLElement* { return item(index); }
+            [this](int32_t index) -> HTMLElement* { return item(index); }
         );
     }
     HTMLElement& toInsert = WTF::switchOn(element,

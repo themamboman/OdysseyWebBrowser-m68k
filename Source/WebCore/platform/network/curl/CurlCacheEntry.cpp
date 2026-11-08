@@ -45,8 +45,8 @@
 #include <wtf/MD5.h>
 
 #if PLATFORM(MUI)
-#include <aros/debug.h>
 #include <proto/dos.h>
+#include <proto/exec.h>
 #include <wtf/FileSystem.h>
 #endif
 
@@ -305,7 +305,12 @@ void CurlCacheEntry::didFinishLoading()
 
 void CurlCacheEntry::generateBaseFilename(const CString& url)
 {
-    MD5 md5;
+    // Elaborated type specifier (`class MD5`, not plain `MD5`) needed here: this translation unit
+    // also sees AmiSSL's openssl/md5.h, which declares a free function `::MD5(...)`. That function
+    // and WTF's `class MD5` (brought into the global namespace via `using WTF::MD5;`) coexist, but
+    // plain unqualified `MD5` resolves to the function for ordinary lookup -- `class MD5` forces
+    // the type.
+    class MD5 md5;
     md5.addBytes(reinterpret_cast<const uint8_t*>(url.data()), url.length());
 
     MD5::Digest sum;

@@ -65,7 +65,7 @@ inline size_t systemPageSize()
 	return 4096;
 }
 
-#elif OS(AROS)
+#elif OS(AROS) || OS(AMIGA)
 
 inline size_t systemPageSize()
 {

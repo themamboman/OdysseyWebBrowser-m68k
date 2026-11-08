@@ -586,7 +586,7 @@ inline LayoutUnit operator/(unsigned long long a, const LayoutUnit& b)
 inline LayoutUnit operator+(const LayoutUnit& a, const LayoutUnit& b)
 {
     LayoutUnit returnVal;
-    returnVal.setRawValue(saturatedAddition(a.rawValue(), b.rawValue()));
+    returnVal.setRawValue(static_cast<int>(saturatedAddition(a.rawValue(), b.rawValue())));
     return returnVal;
 }
 
@@ -623,7 +623,7 @@ inline double operator+(const double a, const LayoutUnit& b)
 inline LayoutUnit operator-(const LayoutUnit& a, const LayoutUnit& b)
 {
     LayoutUnit returnVal;
-    returnVal.setRawValue(saturatedSubtraction(a.rawValue(), b.rawValue()));
+    returnVal.setRawValue(static_cast<int>(saturatedSubtraction(a.rawValue(), b.rawValue())));
     return returnVal;
 }
 
@@ -689,7 +689,7 @@ inline LayoutUnit operator%(int a, const LayoutUnit& b)
 
 inline LayoutUnit& operator+=(LayoutUnit& a, const LayoutUnit& b)
 {
-    a.setRawValue(saturatedAddition(a.rawValue(), b.rawValue()));
+    a.setRawValue(static_cast<int>(saturatedAddition(a.rawValue(), b.rawValue())));
     return a;
 }
 
@@ -719,7 +719,7 @@ inline LayoutUnit& operator-=(LayoutUnit& a, int b)
 
 inline LayoutUnit& operator-=(LayoutUnit& a, const LayoutUnit& b)
 {
-    a.setRawValue(saturatedSubtraction(a.rawValue(), b.rawValue()));
+    a.setRawValue(static_cast<int>(saturatedSubtraction(a.rawValue(), b.rawValue())));
     return a;
 }
 

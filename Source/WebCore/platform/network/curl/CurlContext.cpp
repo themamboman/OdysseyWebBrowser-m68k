@@ -277,6 +277,16 @@ CURLMcode CurlMultiHandle::perform(int& runningHandles)
     return curl_multi_perform(m_multiHandle, &runningHandles);
 }
 
+#if PLATFORM(MUI)
+long CurlMultiHandle::timeoutMilliseconds()
+{
+    long timeout = -1;
+    if (curl_multi_timeout(m_multiHandle, &timeout) != CURLM_OK)
+        return -1;
+    return timeout;
+}
+#endif
+
 CURLMsg* CurlMultiHandle::readInfo(int& messagesInQueue)
 {
     return curl_multi_info_read(m_multiHandle, &messagesInQueue);

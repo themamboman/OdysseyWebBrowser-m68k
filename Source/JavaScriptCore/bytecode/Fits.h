@@ -83,6 +83,23 @@ struct Fits<uint32_t, OpcodeSize::Narrow> {
     }
 };
 
+#if defined(__M68K__)
+template<>
+struct Fits<unsigned int, OpcodeSize::Narrow> {
+    static bool check(unsigned u) { return u <= UINT8_MAX; }
+
+    static uint8_t convert(unsigned u)
+    {
+        ASSERT(check(u));
+        return static_cast<uint8_t>(u);
+    }
+    static unsigned convert(uint8_t u)
+    {
+        return u;
+    }
+};
+#endif
+
 template<>
 struct Fits<int, OpcodeSize::Narrow> {
     static bool check(int i)

@@ -73,6 +73,8 @@ struct DOMMatrix2DInit;
 using CanvasImageSource = Variant<RefPtr<HTMLImageElement>, RefPtr<HTMLVideoElement>, RefPtr<HTMLCanvasElement>, RefPtr<ImageBitmap>, RefPtr<TypedOMCSSImageValue>>;
 #elif ENABLE(VIDEO)
 using CanvasImageSource = Variant<RefPtr<HTMLImageElement>, RefPtr<HTMLVideoElement>, RefPtr<HTMLCanvasElement>, RefPtr<ImageBitmap>>;
+#elif ENABLE(CSS_TYPED_OM)
+using CanvasImageSource = Variant<RefPtr<HTMLImageElement>, RefPtr<HTMLCanvasElement>, RefPtr<ImageBitmap>, RefPtr<TypedOMCSSImageValue>>;
 #else
 using CanvasImageSource = Variant<RefPtr<HTMLImageElement>, RefPtr<HTMLCanvasElement>, RefPtr<ImageBitmap>>;
 #endif

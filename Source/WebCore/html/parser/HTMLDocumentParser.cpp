@@ -25,6 +25,7 @@
  */
 
 #include "config.h"
+#include <stdio.h>
 #include "HTMLDocumentParser.h"
 
 #include "CustomElementReactionQueue.h"

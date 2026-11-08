@@ -38,7 +38,6 @@
 #endif
 
 #include <sys/stat.h>
-#include <aros/debug.h>
 
 namespace WebCore {
 

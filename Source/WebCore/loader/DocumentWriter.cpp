@@ -28,6 +28,8 @@
  */
 
 #include "config.h"
+
+#include <stdio.h>
 #include "DocumentWriter.h"
 
 #include "ContentSecurityPolicy.h"
@@ -260,7 +262,7 @@ void DocumentWriter::end()
     m_state = State::Finished;
 
     // http://bugs.webkit.org/show_bug.cgi?id=10854
-    // The frame's last ref may be removed and it can be deleted by checkCompleted(), 
+    // The frame's last ref may be removed and it can be deleted by checkCompleted(),
     // so we'll add a protective refcount
     Ref<Frame> protect(*m_frame);
 

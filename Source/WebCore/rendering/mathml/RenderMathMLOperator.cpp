@@ -298,7 +298,7 @@ LayoutUnit RenderMathMLOperator::verticalStretchedOperatorShift() const
 Optional<int> RenderMathMLOperator::firstLineBaseline() const
 {
     if (useMathOperator())
-        return Optional<int>(std::lround(static_cast<float>(m_mathOperator.ascent() - verticalStretchedOperatorShift())));
+        return Optional<int>(::lround(static_cast<float>(m_mathOperator.ascent() - verticalStretchedOperatorShift())));
     return RenderMathMLToken::firstLineBaseline();
 }
 

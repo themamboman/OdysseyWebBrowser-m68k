@@ -111,7 +111,7 @@ Decimal parseToDecimalForNumberType(const String& string, const Decimal& fallbac
         return fallbackValue;
 
     // We return +0 for -0 case.
-    return value.isZero() ? Decimal(0) : value;
+    return value.isZero() ? Decimal(static_cast<int32_t>(0)) : value;
 }
 
 Decimal parseToDecimalForNumberType(const String& string)

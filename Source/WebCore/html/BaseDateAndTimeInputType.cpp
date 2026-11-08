@@ -47,8 +47,8 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-static const int msecPerMinute = 60 * 1000;
-static const int msecPerSecond = 1000;
+static const int32_t msecPerMinute = 60 * 1000;
+static const int32_t msecPerSecond = 1000;
 
 double BaseDateAndTimeInputType::valueAsDate() const
 {

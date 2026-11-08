@@ -199,8 +199,10 @@ struct JSTextPosition {
 
     JSTextPosition operator+(int adjustment) const { return JSTextPosition(line, offset + adjustment, lineStartOffset); }
     JSTextPosition operator+(unsigned adjustment) const { return *this + static_cast<int>(adjustment); }
+    JSTextPosition operator+(unsigned long adjustment) const { return *this + static_cast<int>(adjustment); }
     JSTextPosition operator-(int adjustment) const { return *this + (- adjustment); }
     JSTextPosition operator-(unsigned adjustment) const { return *this + (- static_cast<int>(adjustment)); }
+    JSTextPosition operator-(unsigned long adjustment) const { return *this + (- static_cast<int>(adjustment)); }
 
     operator int() const { return offset; }
 

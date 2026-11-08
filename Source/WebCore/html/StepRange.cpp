@@ -31,10 +31,10 @@ namespace WebCore {
 using namespace HTMLNames;
 
 StepRange::StepRange()
-    : m_maximum(100)
-    , m_minimum(0)
-    , m_step(1)
-    , m_stepBase(0)
+    : m_maximum(Decimal(static_cast<int32_t>(100)))
+    , m_minimum(Decimal(static_cast<int32_t>(0)))
+    , m_step(Decimal(static_cast<int32_t>(1)))
+    , m_stepBase(Decimal(static_cast<int32_t>(0)))
     , m_stepDescription()
 {
 }
@@ -53,8 +53,8 @@ StepRange::StepRange(const StepRange& stepRange)
 StepRange::StepRange(const Decimal& stepBase, RangeLimitations rangeLimitations, const Decimal& minimum, const Decimal& maximum, const Decimal& step, const StepDescription& stepDescription)
     : m_maximum(maximum)
     , m_minimum(minimum)
-    , m_step(step.isFinite() ? step : 1)
-    , m_stepBase(stepBase.isFinite() ? stepBase : 1)
+    , m_step(step.isFinite() ? step : Decimal(static_cast<int32_t>(1)))
+    , m_stepBase(stepBase.isFinite() ? stepBase : Decimal(static_cast<int32_t>(1)))
     , m_stepDescription(stepDescription)
     , m_hasRangeLimitations(rangeLimitations == RangeLimitations::Valid)
     , m_hasStep(step.isFinite())
@@ -69,7 +69,7 @@ Decimal StepRange::acceptableError() const
 {
     // FIXME: We should use DBL_MANT_DIG instead of FLT_MANT_DIG regarding to HTML5 specification.
     static NeverDestroyed<const Decimal> twoPowerOfFloatMantissaBits(Decimal::Positive, 0, UINT64_C(1) << FLT_MANT_DIG);
-    return m_stepDescription.stepValueShouldBe == StepValueShouldBeReal ? m_step / twoPowerOfFloatMantissaBits : Decimal(0);
+    return m_stepDescription.stepValueShouldBe == StepValueShouldBeReal ? m_step / twoPowerOfFloatMantissaBits : Decimal(static_cast<int32_t>(0));
 }
 
 Decimal StepRange::alignValueForStep(const Decimal& currentValue, const Decimal& newValue) const
@@ -111,22 +111,22 @@ Decimal StepRange::parseStep(AnyStepHandling anyStepHandling, const StepDescript
     }
 
     Decimal step = parseToDecimalForNumberType(stepString);
-    if (!step.isFinite() || step <= 0)
+    if (!step.isFinite() || step <= Decimal(static_cast<int32_t>(0)))
         return stepDescription.defaultValue();
 
     switch (stepDescription.stepValueShouldBe) {
     case StepValueShouldBeReal:
-        step *= stepDescription.stepScaleFactor;
+        step *= Decimal(static_cast<int32_t>(stepDescription.stepScaleFactor));
         break;
     case ParsedStepValueShouldBeInteger:
         // For date, month, and week, the parsed value should be an integer for some types.
-        step = std::max(step.round(), Decimal(1));
-        step *= stepDescription.stepScaleFactor;
+        step = std::max(step.round(), Decimal(static_cast<int32_t>(1)));
+        step *= Decimal(static_cast<int32_t>(stepDescription.stepScaleFactor));
         break;
     case ScaledStepValueShouldBeInteger:
         // For datetime, datetime-local, time, the result should be an integer.
-        step *= stepDescription.stepScaleFactor;
-        step = std::max(step.round(), Decimal(1));
+        step *= Decimal(static_cast<int32_t>(stepDescription.stepScaleFactor));
+        step = std::max(step.round(), Decimal(static_cast<int32_t>(1)));
         break;
     default:
         ASSERT_NOT_REACHED();

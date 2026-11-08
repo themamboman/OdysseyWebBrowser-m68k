@@ -1,0 +1,13 @@
+diff --git a/library/ncrt0.S b/library/ncrt0.S
+index f00654e..68776d9 100644
+--- a/library/ncrt0.S
++++ b/library/ncrt0.S
+@@ -46,7 +46,7 @@
+ 
+ 	movel	#___bss_size,d1
+ 	beqs	no_bss
+-	lea		a4@(__edata:W),a1
++	lea		__edata,a1
+ 
+ clear_bss:
+ 

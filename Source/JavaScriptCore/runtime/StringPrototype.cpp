@@ -1686,7 +1686,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncStartsWith(ExecState* exec)
     JSValue positionArg = exec->argument(1);
     unsigned start = 0;
     if (positionArg.isInt32())
-        start = std::max(0, positionArg.asInt32());
+        start = std::max(0, static_cast<int>(positionArg.asInt32()));
     else {
         unsigned length = stringToSearchIn.length();
         start = clampAndTruncateToUnsigned(positionArg.toInteger(exec), 0, length);
@@ -1722,7 +1722,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncEndsWith(ExecState* exec)
     JSValue endPositionArg = exec->argument(1);
     unsigned end = length;
     if (endPositionArg.isInt32())
-        end = std::max(0, endPositionArg.asInt32());
+        end = std::max(0, static_cast<int>(endPositionArg.asInt32()));
     else if (!endPositionArg.isUndefined()) {
         end = clampAndTruncateToUnsigned(endPositionArg.toInteger(exec), 0, length);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
@@ -1736,7 +1736,7 @@ static EncodedJSValue JSC_HOST_CALL stringIncludesImpl(VM& vm, ExecState* exec, 
     auto scope = DECLARE_THROW_SCOPE(vm);
     unsigned start = 0;
     if (positionArg.isInt32())
-        start = std::max(0, positionArg.asInt32());
+        start = std::max(0, static_cast<int>(positionArg.asInt32()));
     else {
         unsigned length = stringToSearchIn.length();
         start = clampAndTruncateToUnsigned(positionArg.toInteger(exec), 0, length);

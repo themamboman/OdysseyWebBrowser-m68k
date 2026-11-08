@@ -273,6 +273,16 @@ ULONG getv(APTR obj, ULONG attr);
 #endif
 #if defined(__AROS__)
 IPTR getv(APTR obj, ULONG attr);
+#endif
+#if !defined(__MORPHOS__) && !defined(__AROS__)
+ULONG getv(APTR obj, ULONG attr);
+#endif
+/* aros-overrides.h declares DoSuperNew/AllocVecTaskPooled/FreeVecTaskPooled/
+ * ARGB2BGRA(FREE), implemented in aros_stuff.c for __AROS__ || __AMIGAOS3__
+ * (see that file). Deliberately kept separate from the getv() declarations
+ * above, which must stay untouched for classic AmigaOS3 (its ULONG getv()
+ * signature, not AROS's IPTR one). */
+#if defined(__AROS__) || defined(__AMIGAOS3__)
 #include <aros-overrides.h>
 #endif
 

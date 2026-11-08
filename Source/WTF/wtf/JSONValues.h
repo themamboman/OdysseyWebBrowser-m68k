@@ -464,6 +464,17 @@ public:
         castedArray().pushInteger(value);
     }
 
+#if CPU(M68K)
+    // On this platform int32_t is a distinct type from int (both long-width, typedef'd from
+    // different builtins), so a plain int32_t argument is an equally-ranked conversion to both
+    // addItem(int) and addItem(double), which is ambiguous. On other platforms int32_t == int,
+    // so this overload would collide with addItem(int) above.
+    void addItem(int32_t value)
+    {
+        addItem(static_cast<int>(value));
+    }
+#endif
+
     void addItem(double value)
     {
         castedArray().pushDouble(value);

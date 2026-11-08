@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.5)
 
 include(WebKitCommon)
 include(WebCoreMacros.cmake)
@@ -166,6 +166,10 @@ set(WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${SQLITE_INCLUDE_DIR}
     ${ZLIB_INCLUDE_DIRS}
 )
+
+if (WEBKIT_TARGET_AMIGAOS3)
+    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES ${WEBKIT_AMIGA_MULTITASK_LIBRARY_ROOT})
+endif ()
 
 set(WebCore_IDL_INCLUDES
     css

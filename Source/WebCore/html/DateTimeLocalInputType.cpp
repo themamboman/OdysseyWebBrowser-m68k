@@ -71,7 +71,7 @@ ExceptionOr<void> DateTimeLocalInputType::setValueAsDate(double value) const
 StepRange DateTimeLocalInputType::createStepRange(AnyStepHandling anyStepHandling) const
 {
     ASSERT(element());
-    const Decimal stepBase = parseToNumber(element()->attributeWithoutSynchronization(minAttr), 0);
+    const Decimal stepBase = parseToNumber(element()->attributeWithoutSynchronization(minAttr), Decimal(static_cast<int32_t>(0)));
     const Decimal minimum = parseToNumber(element()->attributeWithoutSynchronization(minAttr), Decimal::fromDouble(DateComponents::minimumDateTime()));
     const Decimal maximum = parseToNumber(element()->attributeWithoutSynchronization(maxAttr), Decimal::fromDouble(DateComponents::maximumDateTime()));
     const Decimal step = StepRange::parseStep(anyStepHandling, dateTimeLocalStepDescription, element()->attributeWithoutSynchronization(stepAttr));

@@ -49,7 +49,7 @@ namespace WebCore {
 using namespace HTMLNames;
 
 static const int numberDefaultStep = 1;
-static const int numberDefaultStepBase = 0;
+static const int32_t numberDefaultStepBase = 0;
 static const int numberStepScaleFactor = 1;
 
 struct RealNumberRenderSize {
@@ -183,7 +183,7 @@ bool NumberInputType::sizeShouldIncludeDecoration(int defaultSize, int& preferre
     if (!maximum.isFinite())
         return false;
 
-    const Decimal step = parseToDecimalForNumberType(stepString, 1);
+    const Decimal step = parseToDecimalForNumberType(stepString, Decimal(static_cast<int32_t>(1)));
     ASSERT(step.isFinite());
 
     RealNumberRenderSize size = calculateRenderSize(minimum).max(calculateRenderSize(maximum).max(calculateRenderSize(step)));

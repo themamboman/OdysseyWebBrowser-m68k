@@ -178,6 +178,7 @@ const CodeBlock = ReturnPC + MachineRegisterSize
 const Callee = CodeBlock + SlotSize
 const ArgumentCount = Callee + SlotSize
 const ThisArgumentOffset = ArgumentCount + SlotSize
+const ThisArgument = ThisArgumentOffset
 const FirstArgumentOffset = ThisArgumentOffset + SlotSize
 const CallFrameHeaderSize = ThisArgumentOffset
 
@@ -217,6 +218,8 @@ if X86_64 or X86_64_WIN or ARM64 or ARM64E
     const CalleeSaveSpaceAsVirtualRegisters = 4
 elsif C_LOOP
     const CalleeSaveSpaceAsVirtualRegisters = 1
+    const EntryFrameSize = 0
+    const argumentCountIncludingThis = t2
 elsif ARMv7
     const CalleeSaveSpaceAsVirtualRegisters = 1
 elsif MIPS

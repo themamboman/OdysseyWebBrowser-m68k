@@ -375,6 +375,98 @@ static String keyIdentifierForAmigaKeyCode(struct IntuiMessage *im)
     return "U+0000";
 }
 
+// DOM KeyboardEvent.code: the physical key, named after its US-layout position.
+static const char* const codeForLowRawKey[0x40] = {
+    "Backquote", "Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6", "Digit7",
+    "Digit8", "Digit9", "Digit0", "Minus", "Equal", "Backslash", 0, "Numpad0",
+    "KeyQ", "KeyW", "KeyE", "KeyR", "KeyT", "KeyY", "KeyU", "KeyI",
+    "KeyO", "KeyP", "BracketLeft", "BracketRight", 0, "Numpad1", "Numpad2", "Numpad3",
+    "KeyA", "KeyS", "KeyD", "KeyF", "KeyG", "KeyH", "KeyJ", "KeyK",
+    "KeyL", "Semicolon", "Quote", "IntlHash", 0, "Numpad4", "Numpad5", "Numpad6",
+    "IntlBackslash", "KeyZ", "KeyX", "KeyC", "KeyV", "KeyB", "KeyN", "KeyM",
+    "Comma", "Period", "Slash", 0, "NumpadDecimal", "Numpad7", "Numpad8", "Numpad9",
+};
+
+static const char* namedKeyForAmigaKeyCode(UWORD rawCode, const char** code)
+{
+    switch (rawCode) {
+    case RAWKEY_SPACE:     *code = "Space";       return " ";
+    case RAWKEY_BACKSPACE: *code = "Backspace";   return "Backspace";
+    case RAWKEY_TAB:       *code = "Tab";         return "Tab";
+    case RAWKEY_KP_ENTER:  *code = "NumpadEnter"; return "Enter";
+    case RAWKEY_RETURN:    *code = "Enter";       return "Enter";
+    case RAWKEY_ESCAPE:    *code = "Escape";      return "Escape";
+    case RAWKEY_DELETE:    *code = "Delete";      return "Delete";
+    case RAWKEY_INSERT:    *code = "Insert";      return "Insert";
+    case RAWKEY_PAGEUP:    *code = "PageUp";      return "PageUp";
+    case RAWKEY_PAGEDOWN:  *code = "PageDown";    return "PageDown";
+    case RAWKEY_HOME:      *code = "Home";        return "Home";
+    case RAWKEY_END:       *code = "End";         return "End";
+    case RAWKEY_UP:        *code = "ArrowUp";     return "ArrowUp";
+    case RAWKEY_DOWN:      *code = "ArrowDown";   return "ArrowDown";
+    case RAWKEY_RIGHT:     *code = "ArrowRight";  return "ArrowRight";
+    case RAWKEY_LEFT:      *code = "ArrowLeft";   return "ArrowLeft";
+    case RAWKEY_F1:        *code = "F1";          return "F1";
+    case RAWKEY_F2:        *code = "F2";          return "F2";
+    case RAWKEY_F3:        *code = "F3";          return "F3";
+    case RAWKEY_F4:        *code = "F4";          return "F4";
+    case RAWKEY_F5:        *code = "F5";          return "F5";
+    case RAWKEY_F6:        *code = "F6";          return "F6";
+    case RAWKEY_F7:        *code = "F7";          return "F7";
+    case RAWKEY_F8:        *code = "F8";          return "F8";
+    case RAWKEY_F9:        *code = "F9";          return "F9";
+    case RAWKEY_F10:       *code = "F10";         return "F10";
+    case RAWKEY_F11:       *code = "F11";         return "F11";
+    case RAWKEY_F12:       *code = "F12";         return "F12";
+    case RAWKEY_HELP:      *code = "Help";        return "Help";
+    case RAWKEY_LSHIFT:    *code = "ShiftLeft";   return "Shift";
+    case RAWKEY_RSHIFT:    *code = "ShiftRight";  return "Shift";
+    case RAWKEY_CAPSLOCK:  *code = "CapsLock";    return "CapsLock";
+    case RAWKEY_LCONTROL:  *code = "ControlLeft"; return "Control";
+    case RAWKEY_LALT:      *code = "AltLeft";     return "Alt";
+    case RAWKEY_RALT:      *code = "AltRight";    return "Alt";
+    case RAWKEY_LAMIGA:    *code = "MetaLeft";    return "Meta";
+    case RAWKEY_RAMIGA:    *code = "MetaRight";   return "Meta";
+    case RAWKEY_PRTSCREEN: *code = "PrintScreen"; return "PrintScreen";
+    case RAWKEY_PAUSE:     *code = "Pause";       return "Pause";
+    case RAWKEY_NUMLOCK:   *code = "NumLock";     return "NumLock";
+    case RAWKEY_SCRLOCK:   *code = "ScrollLock";  return "ScrollLock";
+    }
+    *code = rawCode < 0x40 ? codeForLowRawKey[rawCode] : 0;
+    return 0;
+}
+
+// Fills DOM KeyboardEvent.key and .code. Pages commonly test e.key == "Enter";
+// before this, both were always "" on Amiga builds.
+static void keyAndCodeForAmigaKeyCode(struct IntuiMessage *im, String& key, String& code)
+{
+    UWORD rawCode = im->Code & ~IECODE_UP_PREFIX;
+    const char* codeName = 0;
+    const char* named = namedKeyForAmigaKeyCode(rawCode, &codeName);
+    code = codeName ? String(codeName) : String("Unidentified");
+
+    if (named) {
+        key = String(named);
+        return;
+    }
+
+    // Printable key: the character the keymap gives with Shift/Alt/Caps applied,
+    // but not Ctrl or Amiga (e.key for Ctrl+A is "a", not U+0001).
+    struct InputEvent ie;
+    char c = 0;
+    ie.ie_NextEvent = NULL;
+    ie.ie_Class = IECLASS_RAWKEY;
+    ie.ie_SubClass = 0;
+    ie.ie_Code = rawCode;
+    ie.ie_Qualifier = im->Qualifier & ~(IEQUALIFIER_CONTROL | IEQUALIFIER_LCOMMAND | IEQUALIFIER_RCOMMAND);
+    ie.ie_EventAddress = (APTR *) *((ULONG *)im->IAddress);
+    if (MapRawKey(&ie, (STRPTR)&c, 1, NULL) == 1 && (unsigned char)c >= 0x20 && (unsigned char)c != 0x7F) {
+        UChar ch = (unsigned char)c == 0xA4 ? 0x20AC : (UChar)(unsigned char)c; // Euro, as in m_text
+        key = String(&ch, 1);
+    } else
+        key = String("Unidentified");
+}
+
 PlatformKeyboardEvent::PlatformKeyboardEvent(BalEventKey* event)
     : m_windowsVirtualKeyCode(ConvertAmigaKeyToVirtualKey(event))
     , m_autoRepeat(false)
@@ -400,7 +492,10 @@ PlatformKeyboardEvent::PlatformKeyboardEvent(BalEventKey* event)
     if (event->Qualifier & (IEQUALIFIER_LCOMMAND | IEQUALIFIER_RCOMMAND))
         m_modifiers.add(PlatformEvent::Modifier::MetaKey);
 
-#if OS(MORPHOS)
+#if OS(MORPHOS) || defined(__AMIGAOS3__)
+    /* Classic AmigaOS 3.x uses this MapRawKey() path too. Without it no key
+       text was produced at all, and disambiguateKeyDownEvent() fell back to
+       the Windows virtual-key code, which is always the CAPITAL letter. */
     UChar aSrc[2];
     if (IDCMP_RAWKEY == event->Class)
     {
@@ -439,6 +534,7 @@ PlatformKeyboardEvent::PlatformKeyboardEvent(BalEventKey* event)
 
             default:
             {
+#if !defined(__AMIGAOS3__)
                 if(is_morphos2())
                 {
                     struct InputEvent ie;
@@ -475,6 +571,7 @@ PlatformKeyboardEvent::PlatformKeyboardEvent(BalEventKey* event)
                     }                 
                 }
                 else
+#endif /* !__AMIGAOS3__: MapRawKeyUCS4() is MorphOS-only */
                 {
                     struct InputEvent ie;
                     char c = '?';
@@ -500,7 +597,7 @@ PlatformKeyboardEvent::PlatformKeyboardEvent(BalEventKey* event)
                                 c = 18;
                         }
 
-                        aSrc[0] = (UChar) c;
+                        aSrc[0] = (UChar) (unsigned char) c; /* Latin-1: no sign extension */
                     }
                     else
                     {
@@ -555,6 +652,9 @@ PlatformKeyboardEvent::PlatformKeyboardEvent(BalEventKey* event)
 
     m_keyIdentifier = keyIdentifierForAmigaKeyCode(event);
 #endif
+
+    if (IDCMP_RAWKEY == event->Class)
+        keyAndCodeForAmigaKeyCode(event, m_key, m_code);
 
     prev_AltKey   = altKey();
     prev_ShiftKey = shiftKey();

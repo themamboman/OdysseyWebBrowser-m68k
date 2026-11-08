@@ -39,6 +39,17 @@ enum ComponentTransferType {
 
 struct ComponentTransferFunction {
     ComponentTransferFunction() = default;
+    /* A class with any user-declared constructor (even the defaulted
+     * default constructor above) is not an aggregate, so brace-init at
+     * SVGComponentTransferFunctionElement.cpp's call site can't use
+     * aggregate-initialization syntax -- some older GCC versions
+     * tolerated this anyway as a non-conforming extension; this one
+     * doesn't (same issue as CanvasStyle::CMYKAColor -- see
+     * WebCore_status.md). Explicit matching constructor instead. */
+    ComponentTransferFunction(ComponentTransferType type, float slope, float intercept, float amplitude, float exponent, float offset, Vector<float> tableValues)
+        : type(type), slope(slope), intercept(intercept), amplitude(amplitude), exponent(exponent), offset(offset), tableValues(WTFMove(tableValues))
+    {
+    }
 
     ComponentTransferType type { FECOMPONENTTRANSFER_TYPE_UNKNOWN };
 

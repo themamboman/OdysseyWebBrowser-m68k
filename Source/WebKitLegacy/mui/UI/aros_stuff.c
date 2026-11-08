@@ -1,10 +1,12 @@
-#if defined(__AROS__)
+#if defined(__AROS__) || defined(__AMIGAOS3__)
 
 #include <utility/tagitem.h>
 #include <proto/intuition.h>
 #include <proto/exec.h>
 #include <clib/alib_protos.h>
+#include <intuition/classusr.h>
 
+#if defined(__AROS__)
 #include <aros/debug.h>
 
 IPTR DoSuperNew(struct IClass *cl, Object *obj, Tag tag1, ...)
@@ -13,6 +15,60 @@ IPTR DoSuperNew(struct IClass *cl, Object *obj, Tag tag1, ...)
     retval = (IPTR)DoSuperMethod(cl, obj, OM_NEW, AROS_SLOWSTACKTAGS_ARG(tag1));
     AROS_SLOWSTACKTAGS_POST
 }
+#else
+/* Classic AmigaOS3: no AROS_SLOWSTACKTAGS varargs-forwarding trick available
+ * (not provided by this NDK, and not worth reproducing its stack-layout
+ * assumptions by hand). Use the portable, standard BOOPSI approach instead:
+ * walk the caller's Tag/Value varargs with va_arg into a local array, wrap
+ * it in a struct opSet, and dispatch via DoSuperMethodA (the array-based,
+ * non-variadic entry point every class dispatcher already uses for OM_NEW).
+ * TAG_DONE/TAG_MORE are left as the final pair verbatim — NextTagItem()'s
+ * own TAG_MORE chaining (into the caller's ops_AttrList, the common pattern
+ * at every call site here) handles the rest; this function never needs to
+ * dereference it itself.
+ * Not runtime-verified (no WinUAE/Amiberry on this host) — verified only
+ * by inspection against the documented struct opSet / TagItem layout.
+ */
+#include <stdarg.h>
+IPTR DoSuperNew(struct IClass *cl, Object *obj, Tag tag1, ...)
+{
+    struct TagItem tags[128];
+    struct opSet opset;
+    va_list args;
+    ULONG n = 0;
+    Tag tag = tag1;
+
+    va_start(args, tag1);
+    for (;;)
+    {
+        tags[n].ti_Tag = tag;
+        if (tag == TAG_DONE || tag == TAG_MORE)
+        {
+            tags[n].ti_Data = (tag == TAG_MORE) ? va_arg(args, ULONG) : 0;
+            n++;
+            break;
+        }
+        tags[n].ti_Data = va_arg(args, ULONG);
+        n++;
+        if (n >= 127)
+        {
+            /* Defensively terminate rather than overflow the stack array. */
+            tags[n].ti_Tag = TAG_DONE;
+            tags[n].ti_Data = 0;
+            n++;
+            break;
+        }
+        tag = va_arg(args, Tag);
+    }
+    va_end(args);
+
+    opset.MethodID = OM_NEW;
+    opset.ops_AttrList = tags;
+    opset.ops_GInfo = NULL;
+
+    return (IPTR)DoSuperMethodA(cl, obj, (Msg)&opset);
+}
+#endif /* !__AROS__ */
 
 #include <stdlib.h>
 APTR AllocVecTaskPooled(ULONG byteSize)
@@ -28,6 +84,13 @@ VOID FreeVecTaskPooled(APTR memory)
 APTR ARGB2BGRA(APTR src, ULONG stride, ULONG height)
 {
     APTR _return = AllocVec(stride * height, MEMF_ANY);
+#if defined(__AMIGAOS3__)
+    /* Big-endian m68k: Cairo's CAIRO_FORMAT_ARGB32 and CyberGraphX's
+     * RECTFMT_ARGB both mean native byte order, so they already coincide —
+     * this must be a straight copy, not a byte-swap (see SESSION_HANDOFF.md
+     * §4 item 4). */
+    CopyMem(src, _return, stride * height);
+#else
     ULONG * dstptr = (ULONG *)_return;
     ULONG * srcptr = (ULONG *)src;
     ULONG x, y, pixelsperline = stride / 4, srcval, dstval;
@@ -46,7 +109,7 @@ APTR ARGB2BGRA(APTR src, ULONG stride, ULONG height)
             srcptr++;
             dstptr++;
         }
-
+#endif
 
     return _return;
 }
@@ -56,7 +119,7 @@ VOID ARGB2BGRAFREE(APTR dst)
     FreeVec(dst);
 }
 
-
+#if defined(__AROS__)
 #include <proto/debug.h>
 #include <proto/muimaster.h>
 #include <libraries/debug.h>
@@ -236,4 +299,57 @@ void aros_timer_close()
     if (timerMP != NULL)
         DeleteMsgPort(timerMP);
 }
-#endif
+#endif /* __AROS__ (crash-handler section, AROS-only) */
+
+#if !defined(__AROS__)
+/* Classic AmigaOS 3: OWB also calls GetSysTime() through TimerBase (e.g. the
+ * console window timestamps), so timer.device must be opened here too.
+ * TimerBase itself is defined by the aos_multithreading_library
+ * (multitask_lib.c), which may also open its own EClock unit lazily; either
+ * base is valid for GetSysTime(). */
+#include <devices/timer.h>
+extern struct Device *TimerBase;
+static struct MsgPort * timerMP = NULL;
+static struct IORequest * timerIO = NULL;
+
+int aros_timer_open()
+{
+    timerMP = CreateMsgPort();
+    if (timerMP != NULL)
+    {
+        timerIO = CreateIORequest(timerMP, sizeof(struct timerequest));
+        if (timerIO != NULL)
+        {
+            if (OpenDevice((CONST_STRPTR)"timer.device", UNIT_VBLANK, timerIO, 0) == 0)
+            {
+                if (TimerBase == NULL)
+                    TimerBase = timerIO->io_Device;
+                return 1;
+            }
+            DeleteIORequest(timerIO);
+            timerIO = NULL;
+        }
+    }
+
+    return 0;
+}
+
+void aros_timer_close()
+{
+    if (timerIO != NULL)
+    {
+        if (TimerBase == timerIO->io_Device)
+            TimerBase = NULL;
+        CloseDevice(timerIO);
+        DeleteIORequest(timerIO);
+        timerIO = NULL;
+    }
+    if (timerMP != NULL)
+    {
+        DeleteMsgPort(timerMP);
+        timerMP = NULL;
+    }
+}
+#endif /* !__AROS__ */
+
+#endif /* __AROS__ || __AMIGAOS3__ */

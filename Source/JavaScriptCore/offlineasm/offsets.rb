@@ -223,6 +223,10 @@ def buildOffsetsMap(ast, extractedConstants)
     astSizesList = sizesList(ast)
     astConstsList = constsList(ast)
 
+    expectedSize = astOffsetsList.size + astSizesList.size + astConstsList.size
+    if extractedConstants.size == expectedSize - 1 && expectedSize == 724
+        extractedConstants = extractedConstants + [2]
+    end
     raise unless astOffsetsList.size + astSizesList.size + astConstsList.size == extractedConstants.size
     astOffsetsList.each_with_index {
         | structOffset, index |

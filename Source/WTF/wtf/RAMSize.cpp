@@ -26,6 +26,8 @@
 #include "config.h"
 #include <wtf/RAMSize.h>
 
+#include <cstdio>
+
 #include <mutex>
 #include <wtf/StdLibExtras.h>
 

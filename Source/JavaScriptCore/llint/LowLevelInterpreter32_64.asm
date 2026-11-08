@@ -1935,7 +1935,9 @@ end)
 
 
 op(llint_throw_from_slow_path_trampoline, macro()
-    loadp Callee[cfr], t1
+    # Callee is a boxed JSValue: on big-endian targets (m68k) the payload is
+    # not at offset 0, so PayloadOffset is required here (as op_catch does).
+    loadp Callee + PayloadOffset[cfr], t1
     andp MarkedBlockMask, t1
     loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t1], t1
     copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(t1, t2)
@@ -1945,7 +1947,7 @@ op(llint_throw_from_slow_path_trampoline, macro()
     # When throwing from the interpreter (i.e. throwing from LLIntSlowPaths), so
     # the throw target is not necessarily interpreted code, we come to here.
     # This essentially emulates the JIT's throwing protocol.
-    loadp Callee[cfr], t1
+    loadp Callee + PayloadOffset[cfr], t1
     andp MarkedBlockMask, t1
     loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t1], t1
     jmp VM::targetMachinePCForThrow[t1]

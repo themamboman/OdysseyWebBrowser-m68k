@@ -24,6 +24,7 @@
  */
 
 #include "config.h"
+#include <math.h>
 #include "ViewportConfiguration.h"
 
 #include "Logging.h"
@@ -525,26 +526,26 @@ int ViewportConfiguration::layoutWidth() const
             if (maximumContentWidthInViewportCoordinate < minimumLayoutSize.width()) {
                 // The content zoomed to maxScale does not fit the view. Return the minimum width
                 // satisfying the constraint maximumScale.
-                return std::round(minimumLayoutSize.width() / maximumScale);
+                return ::round(minimumLayoutSize.width() / maximumScale);
             }
-            return std::round(m_configuration.width);
+            return ::round(m_configuration.width);
         }
 
         // If not, make sure the viewport width and initial scale can co-exist.
         double initialContentWidthInViewportCoordinate = m_configuration.width * m_configuration.initialScaleIgnoringLayoutScaleFactor;
         if (initialContentWidthInViewportCoordinate < minimumLayoutSize.width()) {
             // The specified width does not fit in viewport. Return the minimum width that satisfy the initialScale constraint.
-            return std::round(minimumLayoutSize.width() / m_configuration.initialScaleIgnoringLayoutScaleFactor);
+            return ::round(minimumLayoutSize.width() / m_configuration.initialScaleIgnoringLayoutScaleFactor);
         }
-        return std::round(m_configuration.width);
+        return ::round(m_configuration.width);
     }
 
     // If the page has a real scale, then just return the minimum size over the initial scale.
     if (m_configuration.initialScaleIsSet && !m_configuration.heightIsSet)
-        return std::round(minimumLayoutSize.width() / m_configuration.initialScaleIgnoringLayoutScaleFactor);
+        return ::round(minimumLayoutSize.width() / m_configuration.initialScaleIgnoringLayoutScaleFactor);
 
     if (minimumLayoutSize.height() > 0)
-        return std::round(minimumLayoutSize.width() * layoutHeight() / minimumLayoutSize.height());
+        return ::round(minimumLayoutSize.width() * layoutHeight() / minimumLayoutSize.height());
     return minimumLayoutSize.width();
 }
 
@@ -561,26 +562,26 @@ int ViewportConfiguration::layoutHeight() const
             if (maximumContentHeightInViewportCoordinate < minimumLayoutSize.height()) {
                 // The content zoomed to maxScale does not fit the view. Return the minimum height that
                 // satisfy the constraint maximumScale.
-                return std::round(minimumLayoutSize.height() / maximumScale);
+                return ::round(minimumLayoutSize.height() / maximumScale);
             }
-            return std::round(m_configuration.height);
+            return ::round(m_configuration.height);
         }
 
         // If not, make sure the viewport width and initial scale can co-exist.
         double initialContentHeightInViewportCoordinate = m_configuration.height * m_configuration.initialScaleIgnoringLayoutScaleFactor;
         if (initialContentHeightInViewportCoordinate < minimumLayoutSize.height()) {
             // The specified width does not fit in viewport. Return the minimum height that satisfy the initialScale constraint.
-            return std::round(minimumLayoutSize.height() / m_configuration.initialScaleIgnoringLayoutScaleFactor);
+            return ::round(minimumLayoutSize.height() / m_configuration.initialScaleIgnoringLayoutScaleFactor);
         }
-        return std::round(m_configuration.height);
+        return ::round(m_configuration.height);
     }
 
     // If the page has a real scale, then just return the minimum size over the initial scale.
     if (m_configuration.initialScaleIsSet && !m_configuration.widthIsSet)
-        return std::round(minimumLayoutSize.height() / m_configuration.initialScaleIgnoringLayoutScaleFactor);
+        return ::round(minimumLayoutSize.height() / m_configuration.initialScaleIgnoringLayoutScaleFactor);
 
     if (minimumLayoutSize.width() > 0)
-        return std::round(minimumLayoutSize.height() * layoutWidth() / minimumLayoutSize.width());
+        return ::round(minimumLayoutSize.height() * layoutWidth() / minimumLayoutSize.width());
     return minimumLayoutSize.height();
 }
 

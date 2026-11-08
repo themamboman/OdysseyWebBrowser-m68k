@@ -80,49 +80,49 @@ DEFGET
 DEFSMETHOD(Bookmarkgroup_AddLink)
 {
     GETDATA;
-    return DoMethodA(data->bookmarkgroup, (_Msg_*)msg);
+    return DoMethodA(data->bookmarkgroup, (Msg)msg);
 }
 
 DEFSMETHOD(Bookmarkgroup_Update)
 {
     GETDATA;
-    return DoMethodA(data->bookmarkgroup, (_Msg_*)msg);
+    return DoMethodA(data->bookmarkgroup, (Msg)msg);
 }
 
 DEFSMETHOD(Bookmarkgroup_LoadHtml)
 {
     GETDATA;
-    return DoMethodA(data->bookmarkgroup, (_Msg_*)msg);
+    return DoMethodA(data->bookmarkgroup, (Msg)msg);
 }
 
 DEFSMETHOD(Bookmarkgroup_BuildMenu)
 {
     GETDATA;
-    return DoMethodA(data->bookmarkgroup, (_Msg_*)msg);
+    return DoMethodA(data->bookmarkgroup, (Msg)msg);
 }
 
 DEFSMETHOD(Bookmarkgroup_RegisterQLGroup)
 {
     GETDATA;
-    return DoMethodA(data->bookmarkgroup, (_Msg_*)msg);
+    return DoMethodA(data->bookmarkgroup, (Msg)msg);
 }
 
 DEFSMETHOD(Bookmarkgroup_UnRegisterQLGroup)
 {
     GETDATA;
-    return DoMethodA(data->bookmarkgroup, (_Msg_*)msg);
+    return DoMethodA(data->bookmarkgroup, (Msg)msg);
 }
 
 DEFSMETHOD(Bookmarkgroup_RemoveQuickLink)
 {
     GETDATA;
-    return DoMethodA(data->bookmarkgroup, (_Msg_*)msg);
+    return DoMethodA(data->bookmarkgroup, (Msg)msg);
 }
 
 DEFSMETHOD(Bookmarkgroup_ContainsURL)
 {
     GETDATA;
-    return DoMethodA(data->bookmarkgroup, (_Msg_*)msg);
+    return DoMethodA(data->bookmarkgroup, (Msg)msg);
 }
 
 BEGINMTABLE

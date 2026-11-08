@@ -247,7 +247,7 @@ RefPtr<CSSPrimitiveValue> consumeFontWeightNumber(CSSParserTokenRange& range)
         && result > 0 && result < 1000 && divisibleBy100(result)
 #endif
     ) {
-        result = std::min(std::max(result, std::nextafter(0., 1.)), std::nextafter(1000., 0.));
+        result = std::min(std::max(result, ::nextafter(0., 1.)), ::nextafter(1000., 0.));
         return CSSValuePool::singleton().createValue(result, CSSPrimitiveValue::UnitType::CSS_NUMBER);
     }
 

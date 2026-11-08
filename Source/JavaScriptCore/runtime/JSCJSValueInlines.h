@@ -130,20 +130,24 @@ inline JSValue::JSValue(unsigned i)
 
 inline JSValue::JSValue(long i)
 {
-    if (static_cast<int32_t>(i) != i) {
+    // Deliberately casting to `int` (not int32_t): on some targets int32_t is a typedef for
+    // `long` rather than `int`, which would make the JSValue(int32_t) call below resolve right
+    // back to this same JSValue(long) constructor and recurse infinitely.
+    if (static_cast<int>(i) != i) {
         *this = JSValue(EncodeAsDouble, static_cast<double>(i));
         return;
     }
-    *this = JSValue(static_cast<int32_t>(i));
+    *this = JSValue(static_cast<int>(i));
 }
 
 inline JSValue::JSValue(unsigned long i)
 {
-    if (static_cast<uint32_t>(i) != i) {
+    // See the `int` comment in JSValue(long) above; same reasoning for unsigned/uint32_t.
+    if (static_cast<unsigned>(i) != i) {
         *this = JSValue(EncodeAsDouble, static_cast<double>(i));
         return;
     }
-    *this = JSValue(static_cast<uint32_t>(i));
+    *this = JSValue(static_cast<unsigned>(i));
 }
 
 inline JSValue::JSValue(long long i)
@@ -928,6 +932,28 @@ ALWAYS_INLINE JSValue JSValue::get(ExecState* exec, unsigned propertyName, Prope
         return jsUndefined();
     RELEASE_AND_RETURN(scope, slot.getValue(exec, propertyName));
 }
+
+#if defined(__M68K__)
+ALWAYS_INLINE JSValue JSValue::get(ExecState* exec, uint32_t propertyName) const
+{
+    return get(exec, static_cast<unsigned>(propertyName));
+}
+
+ALWAYS_INLINE JSValue JSValue::get(ExecState* exec, uint32_t propertyName, PropertySlot& slot) const
+{
+    return get(exec, static_cast<unsigned>(propertyName), slot);
+}
+#else
+ALWAYS_INLINE JSValue JSValue::get(ExecState* exec, uint32_t propertyName) const
+{
+    return get(exec, static_cast<unsigned>(propertyName));
+}
+
+ALWAYS_INLINE JSValue JSValue::get(ExecState* exec, uint32_t propertyName, PropertySlot& slot) const
+{
+    return get(exec, static_cast<unsigned>(propertyName), slot);
+}
+#endif
 
 ALWAYS_INLINE JSValue JSValue::get(ExecState* exec, uint64_t propertyName) const
 {

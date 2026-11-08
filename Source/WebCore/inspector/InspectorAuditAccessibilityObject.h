@@ -53,9 +53,9 @@ public:
         Optional<bool> disabled;
         Optional<bool> expanded;
         Optional<bool> focused;
-        Optional<int> headingLevel;
+        Optional<int32_t> headingLevel;
         Optional<bool> hidden;
-        Optional<int> hierarchicalLevel;
+        Optional<int32_t> hierarchicalLevel;
         Optional<bool> ignored;
         Optional<bool> ignoredByDefault;
         String invalidStatus;

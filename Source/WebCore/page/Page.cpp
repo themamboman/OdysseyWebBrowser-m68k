@@ -203,6 +203,32 @@ static constexpr OptionSet<ActivityState::Flag> pageInitialActivityState()
     return { ActivityState::IsVisible, ActivityState::IsInWindow };
 }
 
+/* Diagnostic-only: Page's member-initializer list is one giant expression,
+ * so plain printf()s can't be dropped between its entries the way they can
+ * in an ordinary statement sequence. These wrappers preserve the exact same
+ * construction (member initialization still happens in declaration order,
+ * each wrapper's work is just the same make_unique/create call plus a
+ * print before/after) while making each step individually visible, to
+ * bisect a crash somewhere in this list. */
+template<typename T, typename... Args>
+static std::unique_ptr<T> tracedMakeUnique(const char* label, Args&&... args)
+{
+    auto result = std::make_unique<T>(std::forward<Args>(args)...);
+    return result;
+}
+
+static Ref<Settings> tracedSettingsCreate(Page* page)
+{
+    auto result = Settings::create(page);
+    return result;
+}
+
+static Ref<Frame> tracedFrameCreate(Page* page, HTMLFrameOwnerElement* owner, FrameLoaderClient* client)
+{
+    auto result = Frame::create(page, owner, client);
+    return result;
+}
+
 Page::Page(PageConfiguration&& pageConfiguration)
     : m_chrome(std::make_unique<Chrome>(*this, *pageConfiguration.chromeClient))
     , m_dragCaretController(std::make_unique<DragCaretController>())
@@ -214,17 +240,17 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_contextMenuController(std::make_unique<ContextMenuController>(*this, *pageConfiguration.contextMenuClient))
 #endif
     , m_userInputBridge(std::make_unique<UserInputBridge>(*this))
-    , m_inspectorController(std::make_unique<InspectorController>(*this, pageConfiguration.inspectorClient))
+    , m_inspectorController(tracedMakeUnique<InspectorController>("InspectorController", *this, pageConfiguration.inspectorClient))
 #if ENABLE(POINTER_EVENTS)
-    , m_pointerCaptureController(std::make_unique<PointerCaptureController>(*this))
+    , m_pointerCaptureController(tracedMakeUnique<PointerCaptureController>("PointerCaptureController", *this))
 #endif
 #if ENABLE(POINTER_LOCK)
-    , m_pointerLockController(std::make_unique<PointerLockController>(*this))
+    , m_pointerLockController(tracedMakeUnique<PointerLockController>("PointerLockController", *this))
 #endif
-    , m_settings(Settings::create(this))
-    , m_progress(std::make_unique<ProgressTracker>(*pageConfiguration.progressTrackerClient))
-    , m_backForwardController(std::make_unique<BackForwardController>(*this, WTFMove(pageConfiguration.backForwardClient)))
-    , m_mainFrame(Frame::create(this, nullptr, pageConfiguration.loaderClientForMainFrame))
+    , m_settings(tracedSettingsCreate(this))
+    , m_progress(tracedMakeUnique<ProgressTracker>("ProgressTracker", *pageConfiguration.progressTrackerClient))
+    , m_backForwardController(tracedMakeUnique<BackForwardController>("BackForwardController", *this, WTFMove(pageConfiguration.backForwardClient)))
+    , m_mainFrame(tracedFrameCreate(this, nullptr, pageConfiguration.loaderClientForMainFrame))
     , m_editorClient(WTFMove(pageConfiguration.editorClient))
     , m_plugInClient(pageConfiguration.plugInClient)
     , m_validationMessageClient(WTFMove(pageConfiguration.validationMessageClient))
@@ -238,9 +264,9 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_domTimerAlignmentIntervalIncreaseTimer(*this, &Page::domTimerAlignmentIntervalIncreaseTimerFired)
     , m_activityState(pageInitialActivityState())
     , m_alternativeTextClient(pageConfiguration.alternativeTextClient)
-    , m_consoleClient(std::make_unique<PageConsoleClient>(*this))
+    , m_consoleClient(tracedMakeUnique<PageConsoleClient>("PageConsoleClient", *this))
 #if ENABLE(REMOTE_INSPECTOR)
-    , m_inspectorDebuggable(std::make_unique<PageDebuggable>(*this))
+    , m_inspectorDebuggable(tracedMakeUnique<PageDebuggable>("PageDebuggable", *this))
 #endif
     , m_socketProvider(WTFMove(pageConfiguration.socketProvider))
     , m_cookieJar(WTFMove(pageConfiguration.cookieJar))
@@ -259,16 +285,16 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_playbackControlsManagerUpdateTimer(*this, &Page::playbackControlsManagerUpdateTimerFired)
 #endif
     , m_isUtilityPage(isUtilityPageChromeClient(chrome().client()))
-    , m_performanceMonitor(isUtilityPage() ? nullptr : std::make_unique<PerformanceMonitor>(*this))
-    , m_lowPowerModeNotifier(std::make_unique<LowPowerModeNotifier>([this](bool isLowPowerModeEnabled) { handleLowModePowerChange(isLowPowerModeEnabled); }))
-    , m_performanceLogging(std::make_unique<PerformanceLogging>(*this))
+    , m_performanceMonitor(isUtilityPage() ? nullptr : tracedMakeUnique<PerformanceMonitor>("PerformanceMonitor", *this))
+    , m_lowPowerModeNotifier(tracedMakeUnique<LowPowerModeNotifier>("LowPowerModeNotifier", [this](bool isLowPowerModeEnabled) { handleLowModePowerChange(isLowPowerModeEnabled); }))
+    , m_performanceLogging(tracedMakeUnique<PerformanceLogging>("PerformanceLogging", *this))
 #if PLATFORM(MAC) && (ENABLE(SERVICE_CONTROLS) || ENABLE(TELEPHONE_NUMBER_DETECTION))
-    , m_servicesOverlayController(std::make_unique<ServicesOverlayController>(*this))
+    , m_servicesOverlayController(tracedMakeUnique<ServicesOverlayController>("ServicesOverlayController", *this))
 #endif
     , m_recentWheelEventDeltaFilter(WheelEventDeltaFilter::create())
-    , m_pageOverlayController(std::make_unique<PageOverlayController>(*this))
+    , m_pageOverlayController(tracedMakeUnique<PageOverlayController>("PageOverlayController", *this))
 #if ENABLE(APPLE_PAY)
-    , m_paymentCoordinator(std::make_unique<PaymentCoordinator>(*pageConfiguration.paymentCoordinatorClient))
+    , m_paymentCoordinator(tracedMakeUnique<PaymentCoordinator>("PaymentCoordinator", *pageConfiguration.paymentCoordinatorClient))
 #endif
 #if ENABLE(WEB_AUTHN)
     , m_authenticatorCoordinator(makeUniqueRef<AuthenticatorCoordinator>(WTFMove(pageConfiguration.authenticatorCoordinatorClient)))

@@ -519,7 +519,7 @@ static ALWAYS_INLINE JSString* int32ToStringInternal(VM& vm, int32_t value, int3
     }
 
     if (radix == 10)
-        return jsNontrivialString(&vm, vm.numericStrings.add(value));
+        return jsNontrivialString(&vm, vm.numericStrings.add(static_cast<int>(value)));
 
     return jsNontrivialString(&vm, toStringWithRadixInternal(value, radix));
 

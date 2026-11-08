@@ -548,7 +548,7 @@ Vector<String> canonicalizeLocaleList(ExecState& state, JSValue locales)
         RETURN_IF_EXCEPTION(scope, Vector<String>());
 
         if (kPresent) {
-            JSValue kValue = localesObject->get(&state, k);
+            JSValue kValue = localesObject->get(&state, static_cast<unsigned>(k));
             RETURN_IF_EXCEPTION(scope, Vector<String>());
 
             if (!kValue.isString() && !kValue.isObject()) {

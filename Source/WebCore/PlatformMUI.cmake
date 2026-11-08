@@ -18,6 +18,31 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBKITLEGACY_DIR}/mui/UI/AROS/include"
 )
 
+if (ENABLE_VIDEO)
+    # Acinerella (A/V decode) and the MorphOS media-source/player glue around it are only needed
+    # for audio/video playback, which this port disables. They also pull in `aros/debug.h` and
+    # other AROS-specific headers that were never ported to AmigaOS3. Gating them out here avoids
+    # porting an entire unported third-party decode library for a feature that's off anyway.
+    list(APPEND WebCore_SOURCES
+        platform/graphics/mui/acinerella.c
+        platform/graphics/mui/AcinerellaAudioDecoder.cpp
+        platform/graphics/mui/AcinerellaBuffer.cpp
+        platform/graphics/mui/AcinerellaContainer.cpp
+        platform/graphics/mui/AcinerellaDecoder.cpp
+        platform/graphics/mui/AcinerellaHLS.cpp
+        platform/graphics/mui/AcinerellaMuxer.cpp
+        platform/graphics/mui/AcinerellaPointer.cpp
+        platform/graphics/mui/AcinerellaVideoDecoder.cpp
+        platform/graphics/mui/AudioTrackPrivateMorphOS.cpp
+        platform/graphics/mui/MediaDescriptionMorphOS.cpp
+        platform/graphics/mui/MediaPlayerPrivateMorphOS.cpp
+        platform/graphics/mui/MediaSampleMorphOS.cpp
+        platform/graphics/mui/MediaSourceBufferPrivateMorphOS.cpp
+        platform/graphics/mui/MediaSourcePrivateMorphOS.cpp
+        platform/graphics/mui/VideoTrackPrivateMorphOS.cpp
+    )
+endif ()
+
 list(APPEND WebCore_SOURCES
 
     loader/AdBlock.cpp
@@ -32,23 +57,6 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/ImageSource.cpp
     platform/graphics/WOFFFileFormat.cpp
-
-    platform/graphics/mui/acinerella.c
-    platform/graphics/mui/AcinerellaAudioDecoder.cpp
-    platform/graphics/mui/AcinerellaBuffer.cpp
-    platform/graphics/mui/AcinerellaContainer.cpp
-    platform/graphics/mui/AcinerellaDecoder.cpp
-    platform/graphics/mui/AcinerellaHLS.cpp
-    platform/graphics/mui/AcinerellaMuxer.cpp
-    platform/graphics/mui/AcinerellaPointer.cpp
-    platform/graphics/mui/AcinerellaVideoDecoder.cpp
-    platform/graphics/mui/AudioTrackPrivateMorphOS.cpp
-    platform/graphics/mui/MediaDescriptionMorphOS.cpp
-    platform/graphics/mui/MediaPlayerPrivateMorphOS.cpp
-    platform/graphics/mui/MediaSampleMorphOS.cpp
-    platform/graphics/mui/MediaSourceBufferPrivateMorphOS.cpp
-    platform/graphics/mui/MediaSourcePrivateMorphOS.cpp
-    platform/graphics/mui/VideoTrackPrivateMorphOS.cpp
 
     platform/linux/FileIOLinux.cpp
 
@@ -109,12 +117,30 @@ list(APPEND WebCore_LIBRARIES
     ${ZLIB_LIBRARIES}
 )
 
+# Transitive static-link deps of the m68k-amigaos graphics stack:
+# cairo (image backend) needs pixman; harfbuzz needs pthread and
+# libatomic (m68k has no native CAS instructions).
+list(APPEND WebCore_LIBRARIES
+    pixman-1
+    atomic
+    pthread
+)
+
+# platform/linux/FileIOLinux.cpp (used for PLATFORM(MUI) too) is written against the real
+# asyncio.library API, which was never fetched for this build; libasyncio.a is our own
+# dos.library-backed compat shim providing the same source-level API (see
+# build/asyncio-shim/asyncio_shim.c).
+list(APPEND WebCore_LIBRARIES
+    asyncio
+)
+
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${CAIRO_INCLUDE_DIRS}
     ${FREETYPE_INCLUDE_DIRS}
     ${ICU_INCLUDE_DIRS}
     ${LIBXML2_INCLUDE_DIR}
     ${LIBXSLT_INCLUDE_DIR}
+    ${PNG_INCLUDE_DIRS}
     ${SQLITE_INCLUDE_DIR}
     ${ZLIB_INCLUDE_DIRS}
 )

@@ -72,7 +72,14 @@ namespace WTF {
         key ^= (key >> 16);
         return key;
     }
-    
+
+#if defined(__M68K__)
+    inline unsigned intHash(unsigned key)
+    {
+        return intHash(static_cast<uint32_t>(key));
+    }
+#endif
+
     // Thomas Wang's 64 bit Mix Function: http://www.cris.com/~Ttwang/tech/inthash.htm
     inline unsigned intHash(uint64_t key)
     {

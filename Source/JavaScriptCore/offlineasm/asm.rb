@@ -334,12 +334,19 @@ outputFlnm = ARGV.shift
 
 $options = {}
 OptionParser.new do |opts|
-    opts.banner = "Usage: asm.rb asmFile offsetsFile outputFileName [--assembler=<ASM>]"
-    # This option is currently only used to specify the masm assembler
+    opts.banner = "Usage: asm.rb asmFile offsetsFile outputFileName [--assembler=<ASM>] [--backend=<BACKEND_LIST>]"
     opts.on("--assembler=[ASM]", "Specify an assembler to use.") do |assembler|
         $options[:assembler] = assembler
     end
+    opts.on("--backend=[BACKEND_LIST]", "Comma-separated list of backends to include.") do |backendList|
+        $options[:backend] = backendList
+    end
 end.parse!
+
+if $options[:backend]
+    validBackends = canonicalizeBackendNames($options[:backend].split(/[,\s]+/))
+    includeOnlyBackends(validBackends)
+end
 
 begin
     configurationList = offsetsAndConfigurationIndex(offsetsFile)

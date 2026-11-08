@@ -4258,12 +4258,16 @@ String CSSComputedStyleDeclaration::item(unsigned i) const
     const auto& inheritedCustomProperties = style->inheritedCustomProperties();
 
     if (i < numComputedProperties + inheritedCustomProperties.size()) {
-        auto results = copyToVector(inheritedCustomProperties.keys());
+        Vector<AtomicString> results;
+        for (auto& key : inheritedCustomProperties.keys())
+            results.append(key);
         return results.at(i - numComputedProperties);
     }
 
     const auto& nonInheritedCustomProperties = style->nonInheritedCustomProperties();
-    auto results = copyToVector(nonInheritedCustomProperties.keys());
+    Vector<AtomicString> results;
+    for (auto& key : nonInheritedCustomProperties.keys())
+        results.append(key);
     return results.at(i - inheritedCustomProperties.size() - numComputedProperties);
 }
 

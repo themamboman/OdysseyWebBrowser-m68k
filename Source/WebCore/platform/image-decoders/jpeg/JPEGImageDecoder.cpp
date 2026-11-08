@@ -532,7 +532,7 @@ bool JPEGImageDecoder::setFailed()
 }
 
 template <J_COLOR_SPACE colorSpace>
-void setPixel(ScalableImageDecoderFrame& buffer, uint32_t* currentAddress, JSAMPARRAY samples, int column)
+void setPixel(ScalableImageDecoderFrame& buffer, RGBA32* currentAddress, JSAMPARRAY samples, int column)
 {
     JSAMPLE* jsample = *samples + column * (colorSpace == JCS_RGB ? 3 : 4);
 

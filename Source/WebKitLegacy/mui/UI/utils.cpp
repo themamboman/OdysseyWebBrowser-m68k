@@ -36,7 +36,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if !defined(__AMIGAOS3__)
 #include <dirent.h>
+#endif
 #include <setjmp.h>
 
 #include <rexx/storage.h>
@@ -854,12 +856,18 @@ char *rexx_result(void)
 
 int send_external_notification(struct external_notification *notification)
 {
-#if !OS(AROS)
+    /* MagicBeacon is a third-party Growl-style notification daemon with its
+     * own separate SDK, never part of any Amiga NDK and not installed in
+     * this toolchain -- treated the same as OS(AROS) above it, which
+     * already has no MagicBeacon support either. The existing "no port"
+     * result (20) is this function's own designed fallback for exactly
+     * this case (daemon/support not present), not a new gap. */
+#if !OS(AROS) && !defined(__AMIGAOS3__)
     struct MsgPort *replyport, *port;
 #endif
     ULONG result = 20; /* no port then tell user */
 
-#if !OS(AROS)
+#if !OS(AROS) && !defined(__AMIGAOS3__)
     if( ( replyport = CreateMsgPort() ) )
     {
         struct MagicBeaconNotificationMessage mbnm;
@@ -972,24 +980,27 @@ Vector<String> get_available_dictionaries()
 {
     Vector<String> dictionaries;
 
-    DIR* dir = opendir("LOCALE:Dictionaries");
+    /* This libc's default dirent.h is a newlib/libnix stub
+     * (sys-include/sys/dirent.h: "#error <dirent.h> not supported") --
+     * clib2 has a real one, but pulling in clib2's dirent.h alone without
+     * switching this whole target to the clib2 runtime risks mismatched
+     * FILE pointer, malloc, and startup-code assumptions (see
+     * SESSION_HANDOFF.md section 6 for a previous clib2-vs-this-libc
+     * mismatch bug on this exact project). WTF::FileSystem::listDirectory()
+     * already does real directory listing over dos.library
+     * Lock/Examine/ExNext for this target (see FileSystemAmiga.cpp) --
+     * reuse that instead of a parallel POSIX path. */
+    for (const auto& fullPath : FileSystem::listDirectory("LOCALE:Dictionaries"_s)) {
+        CString fsRep = fullPath.utf8();
+        const char *base = strrchr(fsRep.data(), '/');
+        base = base ? base + 1 : fsRep.data();
+        char *entry = local_to_utf8(base);
 
-    if(dir)
-    {
-        struct dirent* file;
-
-        while ((file = readdir(dir)))
+        if(entry)
         {
-            char *entry = local_to_utf8(file->d_name);
-
-            if(entry)
-            {
-                dictionaries.append(String::fromUTF8(entry));
-                free(entry);
-            }
+            dictionaries.append(String::fromUTF8(entry));
+            free(entry);
         }
-
-        closedir(dir);
     }
 
     return dictionaries;

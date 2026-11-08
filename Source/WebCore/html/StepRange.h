@@ -60,7 +60,7 @@ public:
 
         Decimal defaultValue() const
         {
-            return defaultStep * stepScaleFactor;
+            return Decimal(static_cast<int32_t>(defaultStep * stepScaleFactor));
         }
     };
 
@@ -83,14 +83,14 @@ public:
     // Clamp the middle value according to the step
     Decimal defaultValue() const
     {
-        return clampValue((m_minimum + m_maximum) / 2);
+        return clampValue((m_minimum + m_maximum) / Decimal(static_cast<int32_t>(2)));
     }
 
     // Map value into 0-1 range
     Decimal proportionFromValue(const Decimal& value) const
     {
         if (m_minimum == m_maximum)
-            return 0;
+            return Decimal(static_cast<int32_t>(0));
 
         return (value - m_minimum) / (m_maximum - m_minimum);
     }

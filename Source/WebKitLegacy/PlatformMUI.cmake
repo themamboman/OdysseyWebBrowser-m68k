@@ -1,5 +1,36 @@
+if (WEBKIT_TARGET_AMIGAOS3 AND NOT WEBKIT_AMIGA_MULTITASK_LIBRARY_ROOT)
+    get_filename_component(WEBKIT_AMIGA_MULTITASK_LIBRARY_ROOT "${CMAKE_SOURCE_DIR}/aos_multithreading_library" ABSOLUTE)
+endif ()
+
+if (WEBKIT_TARGET_AMIGAOS3)
+    # ndk-include/inline/muimaster.h's MUI_Request/MUI_AllocAslRequestTags/
+    # MUI_AslRequestTags build a "ULONG _tags[] = {tags...}" local array from
+    # the raw variadic arguments, which requires implicit pointer->ULONG
+    # narrowing for any STRPTR/TagItem* argument — invalid in C++ (this
+    # target compiles .cpp, not .c). locale.cpp/DownloadDelegateMorphOS.cpp
+    # already set this same define for __AROS__ with the comment "Variadic +
+    # C++ local object problem" — the same GCC/C++ rule applies here, not an
+    # AROS-specific issue, so it needs to apply to this whole target.
+    # Falls back to the real variadic MUI_AllocAslRequestTags() etc. from
+    # clib/muimaster_protos.h, which has no such narrowing problem.
+    add_definitions(-DNO_INLINE_STDARG)
+
+    # This whole UI layer pervasively assigns function addresses to struct
+    # Hook's h_Entry/h_SubEntry (APTR-typed) -- a decades-old AmigaOS idiom
+    # that strict ISO C++ forbids (no implicit void* <-> function-pointer
+    # conversion) but GCC accepts as a permissive-mode warning instead of a
+    # hard error, per its own "[-fpermissive]" tag on the diagnostic.
+    # add_compile_options() doesn't reach WebKitLegacy's target here because
+    # WEBKIT_FRAMEWORK_DECLARE(WebKitLegacy) (CMakeLists.txt) already called
+    # add_library() before this file is processed, and add_compile_options()
+    # only affects targets created after it runs. target_compile_options()
+    # on the already-existing target works regardless of that ordering.
+    target_compile_options(WebKitLegacy PRIVATE -fpermissive)
+endif ()
+
 set(WebKitLegacy_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
+    "${WEBKIT_AMIGA_MULTITASK_LIBRARY_ROOT}"
     "${WEBKITLEGACY_DIR}/Storage"
     "${WEBKITLEGACY_DIR}/WebCoreSupport"
     "${CMAKE_SOURCE_DIR}/Source"
@@ -20,6 +51,8 @@ list(APPEND WebKitLegacy_SOURCES
     mui/UI/addressbargroupclass.cpp
     mui/UI/appclass.cpp
     mui/UI/aros_stuff.c
+    mui/UI/amiga_node_compat.c
+    mui/UI/mui_vararg_shim.c
     mui/UI/asl.cpp
     mui/UI/AutofillBackingStore.cpp
     mui/UI/AutofillManager.cpp

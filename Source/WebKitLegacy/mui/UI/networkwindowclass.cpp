@@ -99,7 +99,7 @@ DEFGET
 DEFMMETHOD(List_Redraw)
 {
     GETDATA;
-    return DoMethodA(data->lv_transfers, (_Msg_*)msg);
+    return DoMethodA(data->lv_transfers, (Msg)msg);
 }
 
 DEFSMETHOD(Network_AddJob)

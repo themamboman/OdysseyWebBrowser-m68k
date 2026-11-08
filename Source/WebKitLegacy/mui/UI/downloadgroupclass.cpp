@@ -477,7 +477,7 @@ DEFMMETHOD(List_InsertSingle)
 
     DoMethod(obj, MM_Download_HilightPage, PAGE_IN_PROGRESS);
 
-    return DoMethodA(data->lv_downloads, (_Msg_*)msg);
+    return DoMethodA(data->lv_downloads, (Msg)msg);
 }
 
 #define STUNTZI_BUG 0

@@ -19,6 +19,8 @@
  */
 
 #include "config.h"
+
+#include <cstdio>
 #include "Heap.h"
 
 #include "BlockDirectoryInlines.h"
@@ -281,11 +283,11 @@ private:
 Heap::Heap(VM* vm, HeapType heapType)
     : m_heapType(heapType)
     , m_ramSize(Options::forceRAMSize() ? Options::forceRAMSize() : ramSize())
-    , m_minBytesPerCycle(minHeapSize(m_heapType, m_ramSize))
-    , m_maxEdenSize(m_minBytesPerCycle)
+    , m_minBytesPerCycle((minHeapSize(m_heapType, m_ramSize)))
+    , m_maxEdenSize((m_minBytesPerCycle))
     , m_maxHeapSize(m_minBytesPerCycle)
-    , m_objectSpace(this)
-    , m_machineThreads(std::make_unique<MachineThreads>())
+    , m_objectSpace((this))
+    , m_machineThreads((std::make_unique<MachineThreads>()))
     , m_collectorSlotVisitor(std::make_unique<SlotVisitor>(*this, "C"))
     , m_mutatorSlotVisitor(std::make_unique<SlotVisitor>(*this, "M"))
     , m_mutatorMarkStack(std::make_unique<MarkStackArray>())
@@ -303,12 +305,12 @@ Heap::Heap(VM* vm, HeapType heapType)
     , m_stopIfNecessaryTimer(adoptRef(*new StopIfNecessaryTimer(vm)))
     , m_sharedCollectorMarkStack(std::make_unique<MarkStackArray>())
     , m_sharedMutatorMarkStack(std::make_unique<MarkStackArray>())
-    , m_helperClient(&heapHelperPool())
+    , m_helperClient((&heapHelperPool()))
     , m_threadLock(Box<Lock>::create())
     , m_threadCondition(AutomaticThreadCondition::create())
 {
     m_worldState.store(0);
-    
+
     if (Options::useConcurrentGC()) {
         if (Options::useStochasticMutatorScheduler())
             m_scheduler = std::make_unique<StochasticSpaceTimeMutatorScheduler>(*this);

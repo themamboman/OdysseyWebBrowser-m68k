@@ -18,6 +18,32 @@
 #include <clib/alib_protos.h>
 #endif /* __SASC */
 
+#if defined(__AMIGAOS3__)
+/* STACKIPTR: an AROS/rexxsyslib type (just IPTR, used for values placed on
+ * an ARexx argument stack / TagItem lists) -- not in this classic NDK at
+ * all, but it's a pure alias, nothing version-specific about it. */
+#include <exec/types.h>
+typedef IPTR STACKIPTR;
+/* SIPTR: signed IPTR, same AROS/rexxsyslib origin as STACKIPTR above. */
+typedef LONG SIPTR;
+
+/* stricmp: not provided by the C library this was originally written
+ * against; utility.library's real Stricmp() is the same case-insensitive
+ * compare. Now that the project links against clib2 (-mcrt=clib2),
+ * clib2's own strings.h already provides stricmp as a macro aliasing
+ * strcasecmp -- redefining it here as a function conflicts with that
+ * (confirmed via a real OWB build: strcasecmp redeclared as different
+ * kind of entity -- see WebCore_status.md). Only define it if nothing
+ * upstream already did. */
+#ifndef stricmp
+#include <proto/utility.h>
+static inline int stricmp(const char *a, const char *b)
+{
+    return (int)Stricmp((CONST_STRPTR)a, (CONST_STRPTR)b);
+}
+#endif
+#endif
+
 #define MAINTASK
 
 /* MUI Macros */
@@ -50,6 +76,18 @@
 /*
  * Use BEGINMTABLE to start the description of a dispatcher (BEGINMTABLE2 if you need a name)
  */
+
+/* compilers.h's __reg(x,y) -> "y __asm__(#x)" is this GCC fork's real,
+ * purpose-built extension for binding a function PARAMETER to a specific
+ * hardware register (verified: m68k-amigaos-gcc's c-decl.cc has a
+ * TARGET_M68K-gated code path that accepts `type name asm("regname")` in a
+ * parameter list and emits a prologue that reads that register directly,
+ * exactly the BOOPSI dispatcher calling convention this needs -- a0=cl,
+ * a1=msg, a2=obj). compilers.h already had the correct macro for 68k+GCC
+ * (its own header comment says "68k is not supported yet", and nothing in
+ * the tree ever included it) -- just needed wiring in. */
+#include "compilers.h"
+
 #ifdef __GNUC__
 #ifdef __AROS__
 #define BEGINMTABLE static BOOPSI_DISPATCHER(IPTR, dispatch, cl, obj, msg){switch(msg->MethodID){

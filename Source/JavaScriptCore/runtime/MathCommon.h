@@ -27,6 +27,7 @@
 
 #include <cmath>
 #include <wtf/Optional.h>
+#include <wtf/Platform.h>
 
 namespace JSC {
 
@@ -209,6 +210,17 @@ double JIT_OPERATION jsMod(double x, double y) REFERENCED_FROM_ASM WTF_INTERNAL;
 #endif
 }
 
+// Fallback implementations for math functions not available in AmigaOS std namespace
+#if OS(AMIGA)
+inline double asinh(double x) { return log(x + sqrt(x * x + 1.0)); }
+inline double acosh(double x) { return log(x + sqrt(x * x - 1.0)); }
+inline double atanh(double x) { return 0.5 * log((1.0 + x) / (1.0 - x)); }
+inline double log2(double x) { return log(x) / log(2.0); }
+inline double cbrt(double x) { return x >= 0 ? pow(x, 1.0/3.0) : -pow(-x, 1.0/3.0); }
+inline double expm1(double x) { return exp(x) - 1.0; }
+inline double trunc(double x) { return x >= 0 ? floor(x) : ceil(x); }
+#endif
+
 namespace Math {
 
 using std::sin;
@@ -218,17 +230,28 @@ using std::cosh;
 using std::tan;
 using std::tanh;
 using std::asin;
+#if OS(AMIGA)
+using ::asinh;
+using ::acosh;
+using ::atanh;
+using ::log2;
+using ::cbrt;
+using ::expm1;
+using ::trunc;
+#else
 using std::asinh;
-using std::acos;
 using std::acosh;
-using std::atan;
 using std::atanh;
-using std::log;
-using std::log10;
 using std::log2;
 using std::cbrt;
-using std::exp;
 using std::expm1;
+using std::trunc;
+#endif
+using std::acos;
+using std::atan;
+using std::log;
+using std::log10;
+using std::exp;
 
 double JIT_OPERATION log1p(double) WTF_INTERNAL;
 

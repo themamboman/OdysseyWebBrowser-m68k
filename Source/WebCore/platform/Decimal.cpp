@@ -628,7 +628,7 @@ Decimal Decimal::ceiling() const
     const int numberOfDigits = countDigits(result);
     const int numberOfDropDigits = -exponent();
     if (numberOfDigits < numberOfDropDigits)
-        return isPositive() ? Decimal(1) : zero(Positive);
+        return isPositive() ? Decimal(static_cast<int32_t>(1)) : zero(Positive);
 
     result = scaleDown(result, numberOfDropDigits - 1);
     if (sign() == Positive && result % 10 > 0)
@@ -642,7 +642,7 @@ Decimal Decimal::compareTo(const Decimal& rhs) const
     const Decimal result(*this - rhs);
     switch (result.m_data.formatClass()) {
     case EncodedData::ClassInfinity:
-        return result.isNegative() ? Decimal(-1) : Decimal(1);
+        return result.isNegative() ? Decimal(static_cast<int32_t>(-1)) : Decimal(static_cast<int32_t>(1));
 
     case EncodedData::ClassNaN:
     case EncodedData::ClassNormal:
@@ -670,7 +670,7 @@ Decimal Decimal::floor() const
     const int numberOfDigits = countDigits(result);
     const int numberOfDropDigits = -exponent();
     if (numberOfDigits < numberOfDropDigits)
-        return isPositive() ? zero(Positive) : Decimal(-1);
+        return isPositive() ? zero(Positive) : Decimal(static_cast<int32_t>(-1));
 
     result = scaleDown(result, numberOfDropDigits - 1);
     if (isNegative() && result % 10 > 0)

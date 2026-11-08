@@ -55,6 +55,9 @@ extern Object *app;
 #define D(x)
 #define LOC(a,b) (b)
 
+#define QL_SPACER_HORIZONTAL_BAND 1
+#define QL_SPACER_VERTICAL_BAND   2
+
 static ULONG LayoutFonc( struct Hook *hook, Object *obj, struct MUI_LayoutMsg *lm )
 {
     //struct Data *data=NULL;
@@ -106,7 +109,9 @@ static ULONG LayoutFonc( struct Hook *hook, Object *obj, struct MUI_LayoutMsg *l
                 else
                 {
                     D(kprintf("QL Parent Group: HIDED\n"));
-                    if (_maxheight(child)==1)
+                    /* The spacer's orientation is tagged when it is created; measuring
+                     * _maxheight(child)==1 misclassified it on MUI 4/5 (reports 10). */
+                    if (getv(child, MUIA_UserData) != QL_SPACER_VERTICAL_BAND)
                     {
                         // HSpace()
                         lm->lm_MinMax.MinWidth  = 1;
@@ -153,7 +158,7 @@ static ULONG LayoutFonc( struct Hook *hook, Object *obj, struct MUI_LayoutMsg *l
                 else
                 {
                     // Space
-                    if (_maxheight(obj)==1)
+                    if (getv(child, MUIA_UserData) != QL_SPACER_VERTICAL_BAND)
                     {
                         // Layout HSpace()
                         if (!MUI_Layout(child,0,0,lm->lm_Layout.Width,1,0))
@@ -198,14 +203,14 @@ static void doset(Object *obj, struct Data *data, struct TagItem *tags)
                 if (mode & MV_QuickLinkGroup_Mode_Vert)
                 {
                     // Vertical mode add 1 pixel band
-                    child=(Object *)HSpace(1);
-                    if(child) DoMethod(obj, MUIM_Group_AddTail, child);
+                    child=(Object *)RectangleObject, MUIA_FixWidth, 1, End; /* 1px vertical band (HSpace(1) size varies by MUI version) */
+                    if(child) { set(child, MUIA_UserData, QL_SPACER_VERTICAL_BAND); DoMethod(obj, MUIM_Group_AddTail, child); }
                 }
                 else
                 {
                     // Horiz mode add 1 pixel band
-                    child=(Object *)VSpace(1);
-                    if(child) DoMethod(obj, MUIM_Group_AddTail, child);
+                    child=(Object *)RectangleObject, MUIA_FixHeight, 1, End; /* 1px horizontal band (VSpace(1) size varies by MUI version) */
+                    if(child) { set(child, MUIA_UserData, QL_SPACER_HORIZONTAL_BAND); DoMethod(obj, MUIM_Group_AddTail, child); }
                 }
                 data->hidden=TRUE;
             }
@@ -260,15 +265,15 @@ static void doset(Object *obj, struct Data *data, struct TagItem *tags)
                     {
                         // Vertical mode add 1 pixel band
                         D(kprintf("QuickLinkParentGroup_Hide Add HSpace\n"));
-                        child=(Object *)HSpace(1);
-                        if(child) DoMethod(obj, MUIM_Group_AddTail, child);
+                        child=(Object *)RectangleObject, MUIA_FixWidth, 1, End; /* 1px vertical band (HSpace(1) size varies by MUI version) */
+                        if(child) { set(child, MUIA_UserData, QL_SPACER_VERTICAL_BAND); DoMethod(obj, MUIM_Group_AddTail, child); }
                     }
                     else
                     {
                         // Horiz mode add 1 pixel band
                         D(kprintf("QuickLinkParentGroup_Hide Add VSpace\n"));
-                        child=(Object *)VSpace(1);
-                        if(child) DoMethod(obj, MUIM_Group_AddTail, child);
+                        child=(Object *)RectangleObject, MUIA_FixHeight, 1, End; /* 1px horizontal band (VSpace(1) size varies by MUI version) */
+                        if(child) { set(child, MUIA_UserData, QL_SPACER_HORIZONTAL_BAND); DoMethod(obj, MUIM_Group_AddTail, child); }
                     }
                     //DoMethod(obj, MUIM_Group_ExitChange);
                     data->hidden=TRUE;

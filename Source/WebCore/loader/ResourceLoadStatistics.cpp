@@ -143,7 +143,7 @@ static void decodeHashCountedSet(KeyedDecoder& decoder, const String& label, Has
         if (!decoderInner.decodeString("origin", origin))
             return false;
         
-        unsigned count;
+        uint32_t count;
         if (!decoderInner.decodeUInt32("count", count))
             return false;
 

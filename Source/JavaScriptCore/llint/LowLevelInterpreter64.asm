@@ -2552,3 +2552,26 @@ llintOp(op_log_shadow_chicken_tail, OpLogShadowChickenTail, macro (size, get, di
     callSlowPath(_llint_slow_path_log_shadow_chicken_tail)
     dispatch()
 end)
+
+op(handleUncaughtException_wide, macro ()
+    loadp Callee[cfr], t3
+    andp MarkedBlockMask, t3
+    loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t3], t3
+    restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(t3, t0)
+    storep 0, VM::callFrameForCatch[t3]
+
+    loadp VM::topEntryFrame[t3], cfr
+    addp EntryFrameSize, cfr
+
+    storep 0, ArgumentCount[cfr]
+    storep JSValue::EmptyValue, ThisArgument[cfr]
+    if C_LOOP
+        call _llint_vm_entry_to_javascript
+    else
+        call _vmEntryToJavaScript
+    end
+    move t0, argumentCountIncludingThis
+    move t1, sp
+    call _llint_slow_path_handle_uncaught_exception
+    jmp _llint_throw_during_call_trampoline
+end)

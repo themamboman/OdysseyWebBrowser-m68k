@@ -31,6 +31,7 @@
 #include <wtf/text/StringImpl.h>
 #include <wtf/text/TextBreakIterator.h>
 
+
 namespace WebCore {
 
 unsigned endOfFirstWordBoundaryContext(StringView text)
@@ -64,6 +65,8 @@ unsigned startOfLastWordBoundaryContext(StringView text)
 int findNextWordFromIndex(StringView text, int position, bool forward)
 {
     UBreakIterator* it = wordBreakIterator(text);
+    if (!it) // ICU data missing: no word breaks available.
+        return forward ? text.length() : 0;
 
     if (forward) {
         position = ubrk_following(it, position);
@@ -93,6 +96,10 @@ int findNextWordFromIndex(StringView text, int position, bool forward)
 void findWordBoundary(StringView text, int position, int* start, int* end)
 {
     UBreakIterator* it = wordBreakIterator(text);
+    if (!it) { // ICU data missing: no word breaks available.
+        *start = *end = position;
+        return;
+    }
     *end = ubrk_following(it, position);
     if (*end < 0)
         *end = ubrk_last(it);
@@ -102,6 +109,10 @@ void findWordBoundary(StringView text, int position, int* start, int* end)
 void findEndWordBoundary(StringView text, int position, int* end)
 {
     UBreakIterator* it = wordBreakIterator(text);
+    if (!it) { // ICU data missing: no word breaks available.
+        *end = position;
+        return;
+    }
     *end = ubrk_following(it, position);
     if (*end < 0)
         *end = ubrk_last(it);

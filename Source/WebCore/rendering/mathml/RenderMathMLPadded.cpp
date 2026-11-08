@@ -122,7 +122,7 @@ Optional<int> RenderMathMLPadded::firstLineBaseline() const
         ascent = ascentForChild(*baselineChild) + baselineChild->logicalTop() + voffset();
     else
         ascent = mpaddedHeight(0);
-    return Optional<int>(std::lround(static_cast<float>(ascent)));
+    return Optional<int>(::lround(static_cast<float>(ascent)));
 }
 
 }

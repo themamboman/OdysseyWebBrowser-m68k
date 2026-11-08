@@ -41,6 +41,10 @@
 
 #if USE(PTHREADS)
 #include <pthread.h>
+#elif OS(AMIGA)
+extern "C" {
+#include "multitask_lib.h"
+}
 #endif
 
 namespace WTF {
@@ -51,6 +55,10 @@ using ThreadFunction = void (*)(void* argument);
 using PlatformThreadHandle = pthread_t;
 using PlatformMutex = pthread_mutex_t;
 using PlatformCondition = pthread_cond_t;
+#elif OS(AMIGA)
+using PlatformThreadHandle = struct MyThread*;
+using PlatformMutex = struct MyMutex;
+using PlatformCondition = struct MyCondition;
 #elif OS(WINDOWS)
 using ThreadIdentifier = uint32_t;
 using PlatformThreadHandle = HANDLE;
@@ -64,7 +72,11 @@ class Mutex {
     WTF_MAKE_NONCOPYABLE(Mutex);
     WTF_MAKE_FAST_ALLOCATED;
 public:
+#if USE(PTHREADS) || OS(WINDOWS)
     constexpr Mutex() = default;
+#else
+    Mutex();
+#endif
     WTF_EXPORT_PRIVATE ~Mutex();
 
     WTF_EXPORT_PRIVATE void lock();
@@ -78,6 +90,8 @@ private:
     PlatformMutex m_mutex = PTHREAD_MUTEX_INITIALIZER;
 #elif OS(WINDOWS)
     PlatformMutex m_mutex = SRWLOCK_INIT;
+#else
+    PlatformMutex m_mutex;
 #endif
 };
 
@@ -87,7 +101,11 @@ class ThreadCondition {
     WTF_MAKE_NONCOPYABLE(ThreadCondition);
     WTF_MAKE_FAST_ALLOCATED;
 public:
+#if USE(PTHREADS) || OS(WINDOWS)
     constexpr ThreadCondition() = default;
+#else
+    ThreadCondition();
+#endif
     WTF_EXPORT_PRIVATE ~ThreadCondition();
     
     WTF_EXPORT_PRIVATE void wait(Mutex& mutex);
@@ -101,6 +119,8 @@ private:
     PlatformCondition m_condition = PTHREAD_COND_INITIALIZER;
 #elif OS(WINDOWS)
     PlatformCondition m_condition = CONDITION_VARIABLE_INIT;
+#else
+    PlatformCondition m_condition;
 #endif
 };
 

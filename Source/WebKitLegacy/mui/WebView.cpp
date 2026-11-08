@@ -28,6 +28,7 @@
 
 #include "config.h"
 #include "WebView.h"
+#include <WebCore/FontCascade.h>
 #include "WebEditorClient.h"
 
 #include <HistoryItem.h>
@@ -462,12 +463,16 @@ WebView::WebView()
     RuntimeEnabledFeatures::sharedFeatures().setCSSTypedOMEnabled(true);
     RuntimeEnabledFeatures::sharedFeatures().setLegacyCSSVendorPrefixesEnabled(true);
 
+    /* FontCascade::glyphBufferForTextRun() always draws with the simple path on this port. Measuring must
+       match it: the complex path reports zero width, so text overlaps and carets stay at the left edge. */
+    WebCore::FontCascade::setCodePath(WebCore::FontCascade::Simple);
+    RuntimeEnabledFeatures::sharedFeatures().setUserTimingEnabled(true); /* performance.mark(): duckduckgo.com throws without it */
     RuntimeEnabledFeatures::sharedFeatures().setInputTypeColorEnabled(true);
 
     RuntimeEnabledFeatures::sharedFeatures().setCSSLogicalEnabled(true);
 
-    WebFrame* webFrame = WebFrame::createInstance(); 
-    webFrame->initWithWebView(this, m_page); 
+    WebFrame* webFrame = WebFrame::createInstance();
+    webFrame->initWithWebView(this, m_page);
     m_mainFrame = webFrame;
     // webFrame is now owned by WebFrameLoaderClient and will be destroyed in
     // chain Page->MainFrame->FrameLoader->WebFrameLoaderClient

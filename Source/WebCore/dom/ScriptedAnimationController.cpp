@@ -24,6 +24,7 @@
  */
 
 #include "config.h"
+#include <math.h>
 #include "ScriptedAnimationController.h"
 
 #include "Chrome.h"
@@ -197,7 +198,7 @@ void ScriptedAnimationController::serviceScriptedAnimations(double timestamp)
     TraceScope tracingScope(RAFCallbackStart, RAFCallbackEnd);
 
     // We round this to the nearest microsecond so that we can return a time that matches what is returned by document.timeline.currentTime.
-    double highResNowMs = std::round(1000 * timestamp);
+    double highResNowMs = ::round(1000 * timestamp);
     double legacyHighResNowMs = 1000 * (timestamp + m_document->loader()->timing().referenceWallTime().secondsSinceEpoch().seconds());
 
     // First, generate a list of callbacks to consider.  Callbacks registered from this point

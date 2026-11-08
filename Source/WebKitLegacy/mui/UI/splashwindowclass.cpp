@@ -39,7 +39,14 @@ extern "C"
 }
 
 #if !OS(AROS)
-#include <sys/signal.h>
+/* Only signal(SIGINT, SIG_IGN) below is actually used -- plain ISO C
+ * <signal.h> covers it. <sys/signal.h> pulls in the sysroot's richer BSD
+ * sigaction()/sigset_t implementation, which conflicts with clib2's own
+ * (different sigset_t representation: __sigset_t vs plain int) and is
+ * missing pthread_t declarations in this chain besides -- confirmed via a
+ * real OWB build ("conflicting declaration 'typedef int sigset_t'",
+ * "'pthread_t' was not declared" -- see WebCore_status.md). */
+#include <signal.h>
 #endif
 
 #include <proto/exec.h>
@@ -82,8 +89,16 @@ struct Data
 static ULONG indexation_needed = TRUE;
 static Object *g_splash = NULL;
 
-/* Special callback to report fontconfig cache creation progress */
-extern void (*fontconfig_progress_callback)(int current, int total, char *currentfile);
+/* Special callback to report fontconfig cache creation progress. This is a
+ * MorphOS-only fontconfig extension (FcExtInsertProgressCallback and
+ * friends, used in the #else branch below, are not part of real/upstream
+ * fontconfig either) -- Agent A's minimal functional fontconfig port for
+ * this target has neither, confirmed absent from libfontconfig.a. Nothing
+ * in that minimal port ever actually calls through this pointer, so
+ * providing the storage (rather than just an extern declaration with no
+ * definition anywhere) is enough: the assignment below becomes a write
+ * nobody reads, not a crash. */
+void (*fontconfig_progress_callback)(int current, int total, char *currentfile);
 
 void myfontconfig_progress_callback(int current, int total, char *currentfile)
 {
@@ -125,6 +140,7 @@ void fontconfig_testcache(void)
 
     //kprintf("[fontcache thread] still doing stuff\n");
 
+#if !defined(__AMIGAOS3__)
     pat = FcNameParse ((FcChar8 *) ":");
     os = FcObjectSetBuild (FC_FAMILY, FC_STYLE, (char *) 0);
     fs = FcFontList (0, pat, os);
@@ -180,6 +196,19 @@ void fontconfig_testcache(void)
         }
         FcFontSetDestroy (fs);
     }
+#else
+    /* This toolchain's fontconfig is Agent A's minimal, intentionally
+     * partial port (~1100 lines, fixed family table) -- it implements
+     * FcInit() but not the FcNameParse/FcObjectSetBuild/FcFontList pattern-
+     * matching API this font-family enumeration needs. family_list is left
+     * empty rather than guessing at a fontconfig extension: whatever UI
+     * lists font families (preferences) will just show none, a cosmetic
+     * gap, not a crash. Extending fontconfig itself is out of scope here --
+     * see stubbed_to_finished.md / WebCore_status.md. */
+    (void)os;
+    (void)fs;
+    (void)pat;
+#endif
 
 #if USE_SHARED_FONTCONFIG
     FcExtRemoveProgressCallback((FcExtProgressCallback)myfontconfig_progress_callback);

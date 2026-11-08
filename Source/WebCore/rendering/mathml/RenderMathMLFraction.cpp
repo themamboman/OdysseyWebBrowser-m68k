@@ -271,7 +271,7 @@ void RenderMathMLFraction::paint(PaintInfo& info, const LayoutPoint& paintOffset
 Optional<int> RenderMathMLFraction::firstLineBaseline() const
 {
     if (isValid())
-        return Optional<int>(std::lround(static_cast<float>(ascentOverHorizontalAxis() + mathAxisHeight())));
+        return Optional<int>(::lround(static_cast<float>(ascentOverHorizontalAxis() + mathAxisHeight())));
     return RenderMathMLBlock::firstLineBaseline();
 }
 

@@ -57,6 +57,10 @@
 
 #elif OS(WINDOWS)
 #include <windows.h>
+#elif OS(AMIGA)
+extern "C" {
+#include "multitask_lib.h"
+}
 #endif
 
 namespace WTF {
@@ -122,6 +126,8 @@ private:
 
 #if USE(PTHREADS)
     pthread_key_t m_key { };
+#elif OS(AMIGA)
+    MyTLSKey m_key { 0xFFFF };
 #elif OS(WINDOWS)
     int m_index;
 #endif
@@ -178,6 +184,59 @@ template<typename T, CanBeGCThread canBeGCThread>
 inline void ThreadSpecific<T, canBeGCThread>::setInTLS(Data* data)
 {
     pthread_setspecific(m_key, data);
+}
+
+#elif OS(AMIGA)
+
+typedef MyTLSKey ThreadSpecificKey;
+
+static const constexpr ThreadSpecificKey InvalidThreadSpecificKey = 0xFFFF;
+
+inline void threadSpecificKeyCreate(ThreadSpecificKey* key, void (THREAD_SPECIFIC_CALL *destructor)(void *))
+{
+    *key = MyTLSCreateWithDtor(destructor);
+    if (*key == InvalidThreadSpecificKey)
+        CRASH();
+}
+
+inline void threadSpecificKeyDelete(ThreadSpecificKey key)
+{
+    MyTLSDestroy(key);
+}
+
+inline void threadSpecificSet(ThreadSpecificKey key, void* data)
+{
+    if (!MyTLSSet(key, data))
+        CRASH();
+}
+
+inline void* threadSpecificGet(ThreadSpecificKey key)
+{
+    return MyTLSGet(key);
+}
+
+template<typename T, CanBeGCThread canBeGCThread>
+inline ThreadSpecific<T, canBeGCThread>::ThreadSpecific()
+    : m_key(MyTLSCreateWithDtor(destroy))
+{
+    if (m_key == InvalidThreadSpecificKey)
+        CRASH();
+}
+
+template<typename T, CanBeGCThread canBeGCThread>
+inline T* ThreadSpecific<T, canBeGCThread>::get()
+{
+    Data* data = static_cast<Data*>(MyTLSGet(m_key));
+    if (data)
+        return data->storagePointer();
+    return nullptr;
+}
+
+template<typename T, CanBeGCThread canBeGCThread>
+inline void ThreadSpecific<T, canBeGCThread>::setInTLS(Data* data)
+{
+    if (!MyTLSSet(m_key, data))
+        CRASH();
 }
 
 #elif OS(WINDOWS)
@@ -266,6 +325,8 @@ inline void THREAD_SPECIFIC_CALL ThreadSpecific<T, canBeGCThread>::destroy(void*
     // We want get() to keep working while data destructor works, because it can be called indirectly by the destructor.
     // Some pthreads implementations zero out the pointer before calling destroy(), so we temporarily reset it.
     pthread_setspecific(data->owner->m_key, ptr);
+#elif OS(AMIGA)
+    MyTLSSet(data->owner->m_key, ptr);
 #endif
 
     delete data;

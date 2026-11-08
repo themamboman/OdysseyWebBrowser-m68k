@@ -77,7 +77,7 @@ RefPtr<ImageData> ImageData::create(const IntSize& size, Ref<Uint8ClampedArray>&
     return adoptRef(*new ImageData(size, WTFMove(byteArray)));
 }
 
-ExceptionOr<RefPtr<ImageData>> ImageData::create(Ref<Uint8ClampedArray>&& byteArray, unsigned sw, Optional<unsigned> sh)
+ExceptionOr<RefPtr<ImageData>> ImageData::create(Ref<Uint8ClampedArray>&& byteArray, uint32_t sw, Optional<uint32_t> sh)
 {
     unsigned length = byteArray->length();
     if (!length || length % 4)

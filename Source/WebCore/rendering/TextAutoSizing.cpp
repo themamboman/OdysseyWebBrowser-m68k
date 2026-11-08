@@ -24,6 +24,7 @@
  */
 
 #include "config.h"
+#include <math.h>
 #include "TextAutoSizing.h"
 
 #if ENABLE(TEXT_AUTOSIZING)
@@ -94,7 +95,7 @@ auto TextAutoSizingValue::adjustTextNodeSizes() -> StillHasNodes
     for (auto& node : m_autoSizedNodes)
         cumulativeSize += node->renderer()->candidateComputedTextSize();
 
-    float averageSize = std::round(cumulativeSize / m_autoSizedNodes.size());
+    float averageSize = ::round(cumulativeSize / m_autoSizedNodes.size());
 
     // FIXME: Figure out how to make this code use RenderTreeUpdater/Builder properly.
     RenderTreeBuilder builder((*m_autoSizedNodes.begin())->renderer()->view());
@@ -111,7 +112,7 @@ auto TextAutoSizingValue::adjustTextNodeSizes() -> StillHasNodes
         float scaleChange = averageSize / specifiedSize;
         if (scaleChange > maxScaleIncrease && firstPass) {
             firstPass = false;
-            averageSize = std::round(specifiedSize * maxScaleIncrease);
+            averageSize = ::round(specifiedSize * maxScaleIncrease);
             scaleChange = averageSize / specifiedSize;
         }
 

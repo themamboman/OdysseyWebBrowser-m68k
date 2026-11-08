@@ -318,6 +318,12 @@
 
 #endif /* ARM */
 
+/* CPU(M68K) - Motorola 68k */
+#if defined(__M68K__) || defined(__m68k__) || defined(mc68000) || defined(mc68020) || defined(mc68030) || defined(mc68040) || defined(mc68060)
+#define WTF_CPU_M68K 1
+#define WTF_CPU_KNOWN 1
+#endif
+
 #if !CPU(KNOWN)
 #define WTF_CPU_UNKNOWN 1
 #endif
@@ -444,6 +450,10 @@
 #define WTF_OS_MORPHOS 1
 #endif
 
+#if defined(__AMIGAOS3__)
+#define WTF_OS_AMIGA 1
+#endif
+
 /* Operating environments */
 
 /* CPU(BIG_ENDIAN) or CPU(MIDDLE_ENDIAN) or neither, as appropriate. */
@@ -549,7 +559,7 @@
 #endif
 #elif OS(WINDOWS)
 #define WTF_PLATFORM_WIN 1
-#elif OS(AROS)
+#elif OS(AROS) || OS(AMIGA)
 #define WTF_PLATFORM_MUI 1
 #endif
 
@@ -614,7 +624,9 @@
 #define USE_CURL_OPENSSL 1
 #define USE_TEXTURE_MAPPER 1
 #define USE_TEXTURE_MAPPER_GL 0
+#if !OS(AMIGA)
 #define USE_PTHREADS 1
+#endif
 #endif
 
 /* On Windows, use QueryPerformanceCounter by default */
@@ -759,7 +771,7 @@
 /* Include feature macros */
 #include <wtf/FeatureDefines.h>
 
-#if OS(WINDOWS) || OS(AROS) || OS(MORPHOS)
+#if OS(WINDOWS) || OS(AROS) || OS(MORPHOS) || OS(AMIGA)
 #define USE_SYSTEM_MALLOC 1
 #endif
 
@@ -996,13 +1008,19 @@
 #endif
 
 /* Configure the interpreter */
-#if COMPILER(GCC_COMPATIBLE)
+#if COMPILER(GCC_COMPATIBLE) && !CPU(M68K)
 #define HAVE_COMPUTED_GOTO 1
 #endif
 
 /* Determine if we need to enable Computed Goto Opcodes or not: */
 #if HAVE(COMPUTED_GOTO) || !ENABLE(C_LOOP)
 #define ENABLE_COMPUTED_GOTO_OPCODES 1
+#endif
+
+/* Force disable computed goto for M68K */
+#if CPU(M68K)
+#undef ENABLE_COMPUTED_GOTO_OPCODES
+#define ENABLE_COMPUTED_GOTO_OPCODES 0
 #endif
 
 #if !ENABLE(C_LOOP) && !COMPILER(MSVC) && \
@@ -1182,7 +1200,11 @@
 #define ENABLE_GC_VALIDATION 1
 #endif
 
-#if !defined(ENABLE_BINDING_INTEGRITY) && !OS(WINDOWS)
+/* Not on classic AmigaOS: this toolchain has no COMDAT-style merging, so a class with no
+   out-of-line virtual function keeps a separate vtable copy in each object file. A
+   constructor stores its own object's copy, while the check compares with the exported
+   symbol, so valid objects fail (e.g. window.history): abort() and process teardown. */
+#if !defined(ENABLE_BINDING_INTEGRITY) && !OS(WINDOWS) && !defined(__AMIGAOS3__)
 #define ENABLE_BINDING_INTEGRITY 1
 #endif
 

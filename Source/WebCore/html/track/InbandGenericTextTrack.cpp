@@ -94,11 +94,11 @@ void InbandGenericTextTrack::updateCueFromCueData(TextTrackCueGeneric& cue, Gene
     cue.setFontName(cueData.fontName());
 
     if (cueData.position() > 0)
-        cue.setPosition(std::round(cueData.position()));
+        cue.setPosition(::round(cueData.position()));
     if (cueData.line() > 0)
-        cue.setLine(std::round(cueData.line()));
+        cue.setLine(::round(cueData.line()));
     if (cueData.size() > 0)
-        cue.setSize(std::round(cueData.size()));
+        cue.setSize(::round(cueData.size()));
     if (cueData.backgroundColor().isValid())
         cue.setBackgroundColor(cueData.backgroundColor().rgb());
     if (cueData.foregroundColor().isValid())

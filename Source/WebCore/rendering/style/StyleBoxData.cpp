@@ -30,7 +30,13 @@ namespace WebCore {
 struct SameSizeAsStyleBoxData : public RefCounted<SameSizeAsStyleBoxData> {
     Length length[7];
     int m_zIndex;
+#if CPU(M68K)
+    // m68k GCC's minimum bitfield storage unit appears to be 2 bytes, not the full 4-byte
+    // `unsigned` base type x86/ARM would reserve for these 3 single-bit flags.
+    uint16_t bitfields;
+#else
     uint32_t bitfields;
+#endif
 };
 
 COMPILE_ASSERT(sizeof(StyleBoxData) == sizeof(SameSizeAsStyleBoxData), StyleBoxData_should_not_grow);

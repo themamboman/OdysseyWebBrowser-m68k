@@ -168,6 +168,9 @@ public:
 
     CURLMcode getFdSet(fd_set&, fd_set&, fd_set&, int&);
     CURLMcode perform(int&);
+#if PLATFORM(MUI)
+    long timeoutMilliseconds();
+#endif
     CURLMsg* readInfo(int&);
 
 private:

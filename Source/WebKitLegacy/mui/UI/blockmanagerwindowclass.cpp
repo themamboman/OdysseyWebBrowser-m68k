@@ -84,13 +84,13 @@ DEFGET
 DEFSMETHOD(BlockManagerGroup_DidInsert)
 {
     GETDATA;
-    return DoMethodA(data->group, (_Msg_*)msg);
+    return DoMethodA(data->group, (Msg)msg);
 }
 
 DEFTMETHOD(BlockManagerGroup_Load)
 {
     GETDATA;
-    return DoMethodA(data->group, (_Msg_*)msg);
+    return DoMethodA(data->group, (Msg)msg);
 }
 
 BEGINMTABLE

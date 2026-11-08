@@ -40,6 +40,12 @@
 #include <pthread_np.h>
 #endif
 
+#elif OS(AMIGA)
+
+#include <exec/tasks.h>
+#include <proto/exec.h>
+#include "multitask_lib.h"
+
 #endif
 
 namespace WTF {
@@ -153,6 +159,21 @@ StackBounds StackBounds::newThreadStackBounds(PlatformThreadHandle thread)
 StackBounds StackBounds::currentThreadStackBoundsInternal()
 {
     return newThreadStackBounds(pthread_self());
+}
+
+#elif OS(AMIGA)
+
+StackBounds StackBounds::newThreadStackBounds(PlatformThreadHandle thread)
+{
+    ASSERT(thread);
+    ASSERT(thread->os_task);
+    return StackBounds { thread->os_task->tc_SPUpper, thread->os_task->tc_SPLower };
+}
+
+StackBounds StackBounds::currentThreadStackBoundsInternal()
+{
+    struct Task* task = FindTask(nullptr);
+    return StackBounds { task->tc_SPUpper, task->tc_SPLower };
 }
 
 #elif OS(WINDOWS)

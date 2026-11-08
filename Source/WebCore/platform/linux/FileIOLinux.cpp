@@ -34,10 +34,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 
 #if PLATFORM(MUI)
 #include <dos/dos.h>
 #include <proto/dos.h>
+#include <proto/exec.h>
 #if !OS(AROS)
 #include <proto/asyncio.h>
 #endif
@@ -124,9 +126,7 @@ void OWBFile::close()
 	{
 		if((int) m_fd < 0x1000)
 		{
-			kprintf("[File] m_fd 0x%p is highly suspicious, skipping\n", m_fd);
-			kprintf("[File] Dumping task state\n");
-			DumpTaskState(FindTask(NULL));
+			kprintf("[File] m_fd 0x%p is highly suspicious, skipping (task 0x%p)\n", m_fd, FindTask(NULL));
 			m_fd = 0;
 			return;
 		}

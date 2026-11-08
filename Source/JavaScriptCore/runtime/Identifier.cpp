@@ -69,6 +69,11 @@ Identifier Identifier::from(ExecState* exec, unsigned value)
     return Identifier(exec, exec->vm().numericStrings.add(value));
 }
 
+Identifier Identifier::from(ExecState* exec, uint32_t value)
+{
+    return Identifier(exec, exec->vm().numericStrings.add(static_cast<unsigned>(value)));
+}
+
 Identifier Identifier::from(ExecState* exec, int value)
 {
     return Identifier(exec, exec->vm().numericStrings.add(value));
@@ -82,6 +87,11 @@ Identifier Identifier::from(ExecState* exec, double value)
 Identifier Identifier::from(VM* vm, unsigned value)
 {
     return Identifier(vm, vm->numericStrings.add(value));
+}
+
+Identifier Identifier::from(VM* vm, uint32_t value)
+{
+    return Identifier(vm, vm->numericStrings.add(static_cast<unsigned>(value)));
 }
 
 Identifier Identifier::from(VM* vm, int value)

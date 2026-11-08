@@ -360,7 +360,7 @@ JSString* JSValue::toStringSlowCase(ExecState* exec, bool returnEmptyStringOnErr
         auto integer = asInt32();
         if (static_cast<unsigned>(integer) <= 9)
             return vm.smallStrings.singleCharacterString(integer + '0');
-        return jsNontrivialString(&vm, vm.numericStrings.add(integer));
+        return jsNontrivialString(&vm, vm.numericStrings.add(static_cast<int>(integer)));
     }
     if (isDouble())
         return jsString(&vm, vm.numericStrings.add(asDouble()));
@@ -398,7 +398,7 @@ String JSValue::toWTFStringSlowCase(ExecState* exec) const
 {
     VM& vm = exec->vm();
     if (isInt32())
-        return vm.numericStrings.add(asInt32());
+        return vm.numericStrings.add(static_cast<int>(asInt32()));
     if (isDouble())
         return vm.numericStrings.add(asDouble());
     if (isTrue())

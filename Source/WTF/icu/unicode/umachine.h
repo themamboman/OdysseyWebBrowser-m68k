@@ -329,7 +329,19 @@ typedef int8_t UBool;
  * @see U_SENTINEL
  * @stable ICU 2.4
  */
+#if defined(__M68K__) || defined(__m68k__)
+/* On this target's newlib, int32_t is typedef'd to long, not int, even though both are
+ * 32 bits (done for AmigaOS LONG/NDK ABI compatibility). WebKit's overload sets for
+ * character-handling functions (e.g. isIdentStart(LChar)/isIdentStart(UChar32)) rely on
+ * UChar32 being plain int so that narrow-character arguments promote to it cleanly;
+ * with UChar32 == long, that promotion no longer wins over other conversions and calls
+ * become ambiguous. Defining UChar32 as plain int here (instead of int32_t) keeps it a
+ * true 32-bit type while avoiding that ambiguity everywhere UChar32 is used.
+ */
+typedef int UChar32;
+#else
 typedef int32_t UChar32;
+#endif
 
 /**
  * This value is intended for sentinel values for APIs that

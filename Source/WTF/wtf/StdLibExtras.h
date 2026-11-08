@@ -80,7 +80,7 @@
  * - https://bugs.webkit.org/show_bug.cgi?id=38045
  * - http://gcc.gnu.org/bugzilla/show_bug.cgi?id=43976
  */
-#if (CPU(ARM) || CPU(MIPS)) && COMPILER(GCC_COMPATIBLE)
+#if (CPU(ARM) || CPU(MIPS) || CPU(M68K)) && COMPILER(GCC_COMPATIBLE)
 template<typename Type>
 inline bool isPointerTypeAlignmentOkay(Type* ptr)
 {
@@ -158,6 +158,18 @@ inline size_t bitCount(unsigned bits)
     bits = (bits & 0x33333333) + ((bits >> 2) & 0x33333333);
     return (((bits + (bits >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24;
 }
+
+#if SIZEOF_UINT32_T != SIZEOF_UNSIGNED_INT
+inline size_t bitCount(uint32_t bits)
+{
+    return bitCount(static_cast<unsigned>(bits));
+}
+#elif defined(__M68K__)
+inline size_t bitCount(uint32_t bits)
+{
+    return bitCount(static_cast<unsigned>(bits));
+}
+#endif
 
 inline size_t bitCount(uint64_t bits)
 {
@@ -453,6 +465,14 @@ constexpr std::tuple<Args&...> tie(Args&... values)
     return std::tuple<Args&...>(values...);
 }
 
+// Missing from this WTF snapshot (added upstream after this fork's WTF was last synced); several
+// WebCore files already call it. A thin forwarding wrapper is sufficient for those call sites.
+template<typename T, typename... Args>
+std::unique_ptr<T> makeUnique(Args&&... args)
+{
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
+
 } // namespace WTF
 
 // This version of placement new omits a 0 check.
@@ -585,6 +605,7 @@ using WTF::isCompilationThread;
 using WTF::isPointerAligned;
 using WTF::isStatelessLambda;
 using WTF::is8ByteAligned;
+using WTF::makeUnique;
 using WTF::mergeDeduplicatedSorted;
 using WTF::roundUpToMultipleOf;
 using WTF::safeCast;

@@ -52,7 +52,9 @@
 #include "gui.h"
 #include "utils.h"
 #if !OS(AROS)
+#if !defined(__AMIGAOS3__)
 #include <proto/spellchecker.h>
+#endif
 #endif
 #include <clib/debug_protos.h>
 
@@ -893,7 +895,7 @@ void WebEditorClient::getGuessesForWord(const String& word, const String& contex
 
         if(dictionary)
         {
-#if !OS(AROS)
+#if !OS(AROS) && !defined(__AMIGAOS3__)
             D(kprintf("Checking <%s>\n", cword));
 
             STRPTR *res = (STRPTR *) Suggest(dictionary, (STRPTR) cword, NULL);

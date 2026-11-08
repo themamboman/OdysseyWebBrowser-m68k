@@ -37,6 +37,12 @@
 #include <CommonCrypto/CommonDigest.h>
 #endif
 
+// AmigaOS's AmiSSL headers (proto/inline/amissl.h) #define MD5(d, n, md) as a stub that calls the
+// library function via its base pointer, for programs that use AmiSSL's MD5() C API directly.
+// That collides with the class below wherever a file transitively includes both. Undefining it
+// here is a no-op on every other platform/configuration.
+#undef MD5
+
 namespace WTF {
 
 class MD5 {

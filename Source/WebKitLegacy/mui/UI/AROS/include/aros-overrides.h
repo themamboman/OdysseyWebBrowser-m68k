@@ -13,46 +13,97 @@ VOID ARGB2BGRAFREE(APTR dst);
 }
 #endif
 
-#undef DoMethod // these inlines somehow conflict with compilation, something abour variadic?
+/* These #undef's were written for AROS's own compiler/headers, which
+ * apparently have a real conflict with these inline macros ("something
+ * about variadic", per the original comment). Classic AmigaOS3 doesn't
+ * have that problem -- confirmed by the whole project already relying on
+ * these exact inline macros successfully elsewhere (MUI_NewObject/
+ * MUI_MakeObject's own vararg handling, fixed earlier this session).
+ * Applying the undef here too (this file started firing for __AMIGAOS3__
+ * as well as __AROS__ earlier this session) permanently breaks SetAttrs/
+ * NewObject project-wide: the #include <proto/intuition.h> right below
+ * that's meant to restore them is a no-op once that header's already been
+ * included earlier in the same TU (which it always has, via gui.h/mui.h),
+ * so the macros never come back -- confirmed via a real OWB link showing
+ * "undefined reference to SetAttrs/NewObject" in nearly every UI file
+ * (see WebCore_status.md). Scoped back to AROS only. */
+#if defined(__AROS__)
+#undef DoMethod
 #undef SetAttrs
 #undef CoerceMethod
-
 #undef NewObject
+#endif
 #include <proto/intuition.h>
 
 typedef struct _struct_Msg _Msg_;
 
-/* Overrides for struct Node to struct ::Node due to OWB also having such type */
-#ifndef EXEC_NODES_H
-#   include <exec/nodes.h>
+/* struct Node is ambiguous in any translation unit that also pulls in
+ * WebCore headers (confirmed empirically -- see WebCore_status.md: no
+ * amount of :: qualification or reordering fixes it, because some WebCore
+ * header already makes Node ambiguous before this point is even reached in
+ * the files that hit it). Fix: the real struct Node manipulation now lives
+ * in amiga_node_compat.c, a clean translation unit with no WebCore headers,
+ * exposed here through void*-typed wrapper functions so these macros never
+ * need to name "Node" at their use site at all. */
+#ifdef __cplusplus
+extern "C" {
+#endif
+void  Amiga_NewList(void *list);
+void  Amiga_Remove(void *n);
+void *Amiga_RemHead(void *l);
+void  Amiga_AddTail(void *l, void *n);
+void  Amiga_AddHead(void *l, void *n);
+void *Amiga_RemTail(void *l);
+#ifdef __cplusplus
+}
 #endif
 
 #undef NEWLIST
-#define NEWLIST(_l)                                     \
-do                                                      \
-{                                                       \
-    struct List *__aros_list_tmp = (struct List *)(_l), \
-                *l = __aros_list_tmp;                   \
-                                                        \
-    l->lh_TailPred = (struct ::Node *)l;                \
-    l->lh_Tail     = 0;                                 \
-    l->lh_Head     = (struct ::Node *)&l->lh_Tail;      \
-} while (0)
+#define NEWLIST(_l) Amiga_NewList((void *)(_l))
 
 #undef REMOVE
-#define REMOVE(n) Remove((struct ::Node*)n)
+#define REMOVE(n) Amiga_Remove((void *)n)
 
 #undef REMHEAD
-#define REMHEAD(l) ((APTR)RemHead((struct List*)l))
+#define REMHEAD(l) ((APTR)Amiga_RemHead((void *)l))
 
 #undef ADDTAIL
-#define ADDTAIL(l,n) AddTail((struct List*)l,(struct ::Node*)n)
+#define ADDTAIL(l,n) Amiga_AddTail((void *)l,(void *)n)
 
 #undef ADDHEAD
-#define ADDHEAD(l,n) AddHead((struct List*)l,(struct ::Node*)n)
+#define ADDHEAD(l,n) Amiga_AddHead((void *)l,(void *)n)
 
 #undef REMTAIL
-#define REMTAIL(l) ((APTR)RemTail((struct List*)l))
+#define REMTAIL(l) ((APTR)Amiga_RemTail((void *)l))
+
+/* MUIB_MUI: this NDK's mui.h doesn't expose it as a symbol, but its own
+ * already-defined attributes (MUIA_List_Active = 0x8042391c, etc.) show the
+ * base is 0x80420000 -- confirmed by cross-referencing those raw hex
+ * literals against the formula used below. Not an AROS-specific value. */
+#ifndef MUIB_MUI
+#define MUIB_MUI 0x80420000UL
+#endif
+
+/* RPTAG_PenMode/FgColor/BgColor: MorphOS true-color RastPort tags (direct
+ * ARGB fill/text color, bypassing indexed pen allocation) with no classic
+ * CyberGraphX equivalent -- confirmed absent from graphics/rpattr.h and
+ * cybergraphics.h in this NDK. SetRPAttrs() itself is real graphics.library
+ * API (not AROS-specific, only #undef'd for __AROS__ a few lines up in
+ * owbbrowserclass.cpp) and ignores unrecognized tags per standard AmigaOS
+ * tag-list semantics, so declaring these as values that cannot collide with
+ * any real RPTAG_* (highest defined is RPTAG_DrawBounds = 0x80000008) gives
+ * graceful degradation -- the few call sites drawing a drag-thumbnail
+ * overlay fall back to the RastPort's default pens instead of the intended
+ * translucent ARGB fill. Purely cosmetic, not a crash/corruption risk. */
+#ifndef RPTAG_PenMode
+#define RPTAG_PenMode 0x81000001UL
+#endif
+#ifndef RPTAG_FgColor
+#define RPTAG_FgColor 0x81000002UL
+#endif
+#ifndef RPTAG_BgColor
+#define RPTAG_BgColor 0x81000003UL
+#endif
 
 #define WA_PointerType                              (WA_Dummy + 164)
 #define POINTERTYPE_NORMAL                          0
@@ -85,6 +136,13 @@ do                                                      \
 #define NM_WHEEL_DOWN                               0x7b
 #undef XMLCALL
 #define XMLCALL
+
+#if defined(__AMIGAOS3__) && !defined(AROS_BIG_ENDIAN)
+/* m68k-amigaos3 is always big-endian; AROS_BIG_ENDIAN is never defined on
+ * this target (it's an AROS-only macro), which silently picked the wrong
+ * (little-endian) RECTFMT below -- see SESSION_HANDOFF.md / WebCore_status.md. */
+#define AROS_BIG_ENDIAN 1
+#endif
 
 #if (AROS_BIG_ENDIAN == 1)
 #define NATIVE_ARGB RECTFMT_ARGB32   /* Big Endian Archs. */

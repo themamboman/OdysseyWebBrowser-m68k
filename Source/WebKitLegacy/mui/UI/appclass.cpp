@@ -34,6 +34,7 @@
 
 /* OWB */
 #include "config.h"
+#include <stdio.h>
 #include "GraphicsContext.h"
 #include "WebFrame.h"
 #include "WebView.h"
@@ -120,12 +121,21 @@ extern void shutdownGlobalFTLWorklist();
 #include <dos/dos.h>
 #include <dos/dostags.h>
 #include <libraries/gadtools.h>
-#include <libraries/openurl.h>
 #include <mui/Aboutbox_mcc.h>
 #include <workbench/workbench.h>
 #include <workbench/icon.h>
 
+#if !defined(__AMIGAOS3__)
 #include <proto/openurl.h>
+#else
+/* openurl.library has no SDK in this toolchain (not a real AmigaOS3
+ * system library without the third-party OpenURL package installed).
+ * OpenURLBase below is declared extern but never opened anywhere in
+ * this codebase on this target, so it is permanently NULL and this
+ * whole feature is dead code at runtime -- these are just the two
+ * declarations needed to let that already-guarded dead branch compile. */
+static inline LONG URL_OpenA(STRPTR, struct TagItem *) { return 0; } /* dead code: OpenURLBase is always NULL on this target, see above */
+#endif
 #include <proto/utility.h>
 #include <proto/icon.h>
 #include <proto/dos.h>
@@ -505,6 +515,10 @@ AROS_UFP3
 );
 #define REXXHOOK(name, param)   static const struct Hook name = { { NULL, NULL }, (APTR)&Rexx, NULL, (APTR)(param) };
 #endif
+#if !OS(MORPHOS) && !OS(AROS)
+static IPTR Rexx(struct Hook *h asm("a0"), Object *obj asm("a2"), IPTR *params asm("a1"));
+#define REXXHOOK(name, param)   static const struct Hook name = { { NULL, NULL }, (APTR)&Rexx, NULL, (APTR)(param) };
+#endif
 REXXHOOK(RexxHookA, REXX_PRINT);
 REXXHOOK(RexxHookB, REXX_ABOUT);
 REXXHOOK(RexxHookC, REXX_COPY);
@@ -561,6 +575,17 @@ static LONG Rexx(void)
     Object * obj = (Object *)REG_A2;
     IPTR *params = (IPTR *)REG_A1;
 
+    data = (struct Data *) INST_DATA(OCLASS(obj), obj);
+#endif
+#if !OS(MORPHOS) && !OS(AROS)
+/* Classic AmigaOS3 + GCC: no EmulLibEntry trampoline (PPC-only) and no
+ * AROS_UFH3 macro (not in this NDK). Bind the ARexx hook's incoming
+ * a0/a2/a1 registers directly as named parameters instead, using the same
+ * GCC m68k-amigaos register-parameter extension verified for the BOOPSI
+ * dispatcher fix (vapor.h BEGINMTABLE) -- see WebCore_status.md. */
+static IPTR Rexx(struct Hook *h asm("a0"), Object *obj asm("a2"), IPTR *params asm("a1"))
+{
+    struct Data *data;
     data = (struct Data *) INST_DATA(OCLASS(obj), obj);
 #endif
 #if OS(AROS)
@@ -1015,7 +1040,7 @@ DEFNEW
 
     obj = (Object *) DoSuperNew(cl, obj,
             MUIA_Application_Title      , "Odyssey Web Browser",
-            MUIA_Application_Version    , "$VER: Odyssey Web Browser " VERSION " (" OWB_BUILD_DATE ")",
+            MUIA_Application_Version    , "$VER: Odyssey Web Browser " DISPLAY_VERSION " (" OWB_BUILD_DATE ")",
             MUIA_Application_Copyright  , "©\n2014-2024 Krzysztof Smiechowicz\n2020 Jacek Piszczek\n2009-2014 Fabien Coeurjoly",
             MUIA_Application_Author     , "Fabien Coeurjoly",
             MUIA_Application_Description, APPLICATION_DESCRIPTION,
@@ -1026,7 +1051,6 @@ DEFNEW
             MUIA_Application_Menustrip  , menustrip = MUI_MakeObject(MUIO_MenustripNM, MenuData, MUIO_MenustripNM_CommandKeyCheck),
             SubWindow, prefswin = (Object *) NewObject(getprefswindowclass(), NULL, TAG_DONE),
             TAG_MORE, INITTAGS);
-
     if(obj)
     {
         GETDATA;
@@ -2318,13 +2342,13 @@ DEFSMETHOD(OWBApp_DownloadCancelled)
 DEFSMETHOD(Bookmarkgroup_AddLink)
 {
     GETDATA;
-    return DoMethodA(data->bookmarkwin, (_Msg_*) msg);
+    return DoMethodA(data->bookmarkwin, (Msg)msg);
 }
 
 DEFSMETHOD(Bookmarkgroup_RemoveQuickLink)
 {
     GETDATA;
-    return DoMethodA(data->bookmarkwin, (_Msg_*) msg);
+    return DoMethodA(data->bookmarkwin, (Msg)msg);
 }
 
 DEFTMETHOD(OWBApp_LoadBookmarks)
@@ -2488,10 +2512,25 @@ void prefs_update(Object *obj, struct Data *data)
     WebCore::ad_block_enabled = (bool) getv(data->prefswin, MA_OWBApp_EnableContentBlocking); // Hack
 
     /* Fonts */
-    sharedPreferences->setDefaultFontSize((int) getv(data->prefswin, MA_OWBApp_DefaultFontSize));
-    sharedPreferences->setDefaultFixedFontSize((int) getv(data->prefswin, MA_OWBApp_DefaultFixedFontSize));
-    sharedPreferences->setMinimumFontSize((int) getv(data->prefswin, MA_OWBApp_MinimumFontSize));
-    sharedPreferences->setMinimumLogicalFontSize((int) getv(data->prefswin, MA_OWBApp_MinimumLogicalFontSize));
+    {
+        int defaultSize      = (int) getv(data->prefswin, MA_OWBApp_DefaultFontSize);
+        int defaultFixedSize = (int) getv(data->prefswin, MA_OWBApp_DefaultFixedFontSize);
+        int minimumSize      = (int) getv(data->prefswin, MA_OWBApp_MinimumFontSize);
+        int minimumLogical   = (int) getv(data->prefswin, MA_OWBApp_MinimumLogicalFontSize);
+
+
+        /* An empty or unparseable prefs field reads back as 0, and a 0px default
+         * font size renders every page at 1px. Fall back to WebKit's defaults. */
+        if (defaultSize <= 0)      defaultSize = 16;
+        if (defaultFixedSize <= 0) defaultFixedSize = 13;
+        if (minimumSize < 0)       minimumSize = 0;
+        if (minimumLogical <= 0)   minimumLogical = 9;
+
+        sharedPreferences->setDefaultFontSize(defaultSize);
+        sharedPreferences->setDefaultFixedFontSize(defaultFixedSize);
+        sharedPreferences->setMinimumFontSize(minimumSize);
+        sharedPreferences->setMinimumLogicalFontSize(minimumLogical);
+    }
     sharedPreferences->setDefaultTextEncodingName((char *) getv(data->prefswin, MA_OWBApp_TextEncoding));
     sharedPreferences->setFontSmoothing((FontSmoothingType) getv(data->prefswin, MA_OWBApp_SmoothingType));
 
@@ -3627,7 +3666,7 @@ DEFSMETHOD(CookieManagerGroup_DidInsert)
 {
     GETDATA;
     if(data->cookiemanagerwin && getv(data->cookiemanagerwin, MUIA_Window_Open))
-        return DoMethodA(data->cookiemanagerwin, (_Msg_*) msg);
+        return DoMethodA(data->cookiemanagerwin, (Msg)msg);
     else
         return 0;
 }
@@ -3636,7 +3675,7 @@ DEFSMETHOD(CookieManagerGroup_DidRemove)
 {
     GETDATA;
     if(data->cookiemanagerwin && getv(data->cookiemanagerwin, MUIA_Window_Open))
-          return DoMethodA(data->cookiemanagerwin, (_Msg_*) msg);
+          return DoMethodA(data->cookiemanagerwin, (Msg)msg);
     else
         return 0;
 }
@@ -3644,7 +3683,7 @@ DEFSMETHOD(CookieManagerGroup_DidRemove)
 DEFSMETHOD(BlockManagerGroup_DidInsert)
 {
     GETDATA;
-    return DoMethodA(data->blockmanagerwin, (_Msg_*) msg);
+    return DoMethodA(data->blockmanagerwin, (Msg)msg);
 }
 
 DEFTMETHOD(OWBApp_EraseFavicons)

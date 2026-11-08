@@ -25,6 +25,7 @@
  */
 
 #include "config.h"
+#include <math.h>
 #include "CairoUtilities.h"
 
 #if USE(CAIRO)
@@ -259,8 +260,8 @@ void drawPatternToCairoContext(cairo_t* cr, cairo_surface_t* image, const IntSiz
     double phaseOffsetX = phase.x() + tileRect.x() * patternTransform.a() + dx;
     double phaseOffsetY = phase.y() + tileRect.y() * patternTransform.d() + dy;
     // this is where we perform the (x mod w, y mod h) metioned above, but with floats instead of integers.
-    phaseOffsetX -= std::trunc(phaseOffsetX / (tileRect.width() * patternTransform.a())) * tileRect.width() * patternTransform.a();
-    phaseOffsetY -= std::trunc(phaseOffsetY / (tileRect.height() * patternTransform.d())) * tileRect.height() * patternTransform.d();
+    phaseOffsetX -= ::trunc(phaseOffsetX / (tileRect.width() * patternTransform.a())) * tileRect.width() * patternTransform.a();
+    phaseOffsetY -= ::trunc(phaseOffsetY / (tileRect.height() * patternTransform.d())) * tileRect.height() * patternTransform.d();
     cairo_matrix_t phaseMatrix = {1, 0, 0, 1, phaseOffsetX, phaseOffsetY};
     cairo_matrix_t combined;
     cairo_matrix_multiply(&combined, &patternMatrix, &phaseMatrix);

@@ -234,9 +234,9 @@ static bool isLookalikeCharacter(const Optional<UChar32>& previousCodePoint, UCh
     case 0x1F513: /* OPEN LOCK */
         return true;
     case 0x0307: /* COMBINING DOT ABOVE */
-        return previousCodePoint == 0x0237 /* LATIN SMALL LETTER DOTLESS J */
-            || previousCodePoint == 0x0131 /* LATIN SMALL LETTER DOTLESS I */
-            || previousCodePoint == 0x05D5; /* HEBREW LETTER VAV */
+        return previousCodePoint && (previousCodePoint.value() == 0x0237 /* LATIN SMALL LETTER DOTLESS J */
+            || previousCodePoint.value() == 0x0131 /* LATIN SMALL LETTER DOTLESS I */
+            || previousCodePoint.value() == 0x05D5); /* HEBREW LETTER VAV */
     case 0x0548: /* ARMENIAN CAPITAL LETTER VO */
     case 0x054D: /* ARMENIAN CAPITAL LETTER SEH */
     case 0x0578: /* ARMENIAN SMALL LETTER VO */

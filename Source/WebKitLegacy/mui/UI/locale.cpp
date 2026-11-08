@@ -75,6 +75,16 @@ ULONG locale_init(void)
 
 void locale_cleanup(void)
 {
-    CloseLocale(locale);
-    CloseCatalog(catalog);
+    /* Called twice at exit: explicitly via destroy_application() and again from its
+       atexit() registration, after close_libs() has closed locale.library and
+       cleared LocaleBase. Only close what is still open, through a valid base. */
+    if (LocaleBase)
+    {
+        if (locale)
+            CloseLocale(locale);
+        if (catalog)
+            CloseCatalog(catalog);
+    }
+    locale = NULL;
+    catalog = NULL;
 }

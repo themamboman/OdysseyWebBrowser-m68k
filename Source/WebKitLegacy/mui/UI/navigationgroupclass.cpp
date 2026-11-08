@@ -29,6 +29,7 @@
 
 #include <proto/intuition.h>
 #include <proto/utility.h>
+#include <stdio.h>
 
 #include "gui.h"
 

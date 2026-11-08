@@ -454,7 +454,7 @@ EncodedJSValue JSC_HOST_CALL atomicsFuncWake(ExecState* exec)
     if (!countValue.isUndefined()) {
         int32_t countInt = countValue.toInt32(exec);
         RETURN_IF_EXCEPTION(scope, JSValue::encode(jsUndefined()));
-        count = std::max(0, countInt);
+        count = std::max<int32_t>(0, countInt);
     }
 
     return JSValue::encode(jsNumber(ParkingLot::unparkCount(ptr, count)));

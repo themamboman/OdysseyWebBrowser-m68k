@@ -38,6 +38,41 @@
 #include <proto/intuition.h>
 #include <intuition/pointerclass.h>
 
+/* The MorphOS-specific pointer-type names below don't exist in the real AmigaOS3
+ * NDK's <intuition/pointerclass.h>, which only has the standard set. Map each to
+ * the closest standard equivalent -- only the on-screen cursor shape differs, not
+ * program logic. */
+#ifndef POINTERTYPE_SELECTLINK
+#define POINTERTYPE_SELECTLINK POINTERTYPE_LINK
+#endif
+#ifndef POINTERTYPE_AIMING
+#define POINTERTYPE_AIMING POINTERTYPE_CROSS
+#endif
+#ifndef POINTERTYPE_SELECTTEXT
+#define POINTERTYPE_SELECTTEXT POINTERTYPE_TEXT
+#endif
+#ifndef POINTERTYPE_MOVE
+#define POINTERTYPE_MOVE POINTERTYPE_DRAGANDDROP
+#endif
+#ifndef POINTERTYPE_HORIZONTALRESIZE
+#define POINTERTYPE_HORIZONTALRESIZE POINTERTYPE_EASTWESTRESIZE
+#endif
+#ifndef POINTERTYPE_VERTICALRESIZE
+#define POINTERTYPE_VERTICALRESIZE POINTERTYPE_NORTHSOUTHRESIZE
+#endif
+#ifndef POINTERTYPE_DIAGONALRESIZE1
+#define POINTERTYPE_DIAGONALRESIZE1 POINTERTYPE_NORTHEASTSOUTHWESTRESIZE
+#endif
+#ifndef POINTERTYPE_DIAGONALRESIZE2
+#define POINTERTYPE_DIAGONALRESIZE2 POINTERTYPE_NORTHWESTSOUTHEASTRESIZE
+#endif
+#ifndef POINTERTYPE_WORKING
+#define POINTERTYPE_WORKING POINTERTYPE_PROGRESS
+#endif
+#ifndef POINTERTYPE_NOTAVAILABLE
+#define POINTERTYPE_NOTAVAILABLE POINTERTYPE_NOTALLOWED
+#endif
+
 namespace WebCore {
 
 void Cursor::ensurePlatformCursor() const

@@ -1,0 +1,142 @@
+--- a/pixman/pixman-bits-image.c
++++ b/pixman/pixman-bits-image.c
+@@ -77,8 +77,8 @@
+ 				get_pixel_t	get_pixel,
+ 				void	       *out)
+ {
+-    int x0 = pixman_fixed_to_int (x - pixman_fixed_e);
+-    int y0 = pixman_fixed_to_int (y - pixman_fixed_e);
++    int32_t x0 = pixman_fixed_to_int (x - pixman_fixed_e);
++    int32_t y0 = pixman_fixed_to_int (y - pixman_fixed_e);
+ 
+     if (image->common.repeat != PIXMAN_REPEAT_NONE)
+     {
+@@ -103,7 +103,7 @@
+     pixman_repeat_t repeat_mode = image->common.repeat;
+     int width = image->width;
+     int height = image->height;
+-    int x1, y1, x2, y2;
++    int32_t x1, y1, x2, y2;
+     uint32_t tl, tr, bl, br;
+     int32_t distx, disty;
+     uint32_t *ret = out;
+@@ -152,7 +152,7 @@
+     pixman_repeat_t repeat_mode = image->common.repeat;
+     int width = image->width;
+     int height = image->height;
+-    int x1, y1, x2, y2;
++    int32_t x1, y1, x2, y2;
+     argb_t tl, tr, bl, br;
+     float distx, disty;
+     argb_t *ret = out;
+@@ -287,8 +287,8 @@
+     {
+ 	for (j = x1; j < x2; ++j)
+ 	{
+-	    int rx = j;
+-	    int ry = i;
++	    int32_t rx = j;
++	    int32_t ry = i;
+ 
+ 	    pixman_fixed_t f = *params;
+ 
+@@ -376,8 +376,8 @@
+             for (j = x1; j < x2; ++j)
+             {
+                 pixman_fixed_t fx = *x_params++;
+-		int rx = j;
+-		int ry = i;
++			int32_t rx = j;
++			int32_t ry = i;
+ 
+                 if (fx)
+                 {
+--- a/pixman/pixman-fast-path.c
++++ b/pixman/pixman-fast-path.c
+@@ -1419,7 +1419,7 @@
+ static force_inline uint32_t
+ fetch_nearest (pixman_repeat_t src_repeat,
+ 	       pixman_format_code_t format,
+-	       uint32_t *src, int x, int src_width)
++	       uint32_t *src, int32_t x, int32_t src_width)
+ {
+     if (repeat (src_repeat, &x, src_width))
+     {
+@@ -1499,7 +1499,7 @@
+     while (height--)
+     {
+         pixman_fixed_t vx = v.vector[0];
+-	int y = pixman_fixed_to_int (vy);
++	int32_t y = pixman_fixed_to_int (vy);
+ 	uint32_t *dst = dst_line;
+ 
+ 	dst_line += dst_stride;
+@@ -2784,8 +2784,8 @@
+ 		for (j = x1; j < x2; ++j)
+ 		{
+ 		    pixman_fixed_t fx = *x_params++;
+-		    int rx = j;
+-		    int ry = i;
++		    int32_t rx = j;
++		    int32_t ry = i;
+ 		    
+ 		    if (fx)
+ 		    {
+@@ -2880,7 +2880,7 @@
+ 
+     for (i = 0; i < width; ++i)
+     {
+-	int x1, y1, x2, y2;
++	int32_t x1, y1, x2, y2;
+ 	uint32_t tl, tr, bl, br;
+ 	int32_t distx, disty;
+ 	int width = image->bits.width;
+@@ -3034,7 +3034,7 @@
+ 
+     for (i = 0; i < width; ++i)
+     {
+-	int width, height, x0, y0;
++	int32_t width, height, x0, y0;
+ 	const uint8_t *row;
+ 
+ 	if (mask && !mask[i])
+--- a/pixman/pixman-inlines.h
++++ b/pixman/pixman-inlines.h
+@@ -54,7 +54,7 @@
+ #define REPEAT_NORMAL_MIN_WIDTH			64
+ 
+ static force_inline pixman_bool_t
+-repeat (pixman_repeat_t repeat, int *c, int size)
++repeat (pixman_repeat_t repeat, int32_t *c, int32_t size)
+ {
+     if (repeat == PIXMAN_REPEAT_NONE)
+     {
+@@ -449,7 +449,7 @@
+     dst_type_t *dst_line;						                        \
+     mask_type_t *mask_line;									\
+     src_type_t *src_first_line;									\
+-    int       y;										\
++    int32_t     y;										\
+     pixman_fixed_t src_width_fixed = pixman_int_to_fixed (src_image->bits.width);		\
+     pixman_fixed_t max_vy;									\
+     pixman_vector_t v;										\
+@@ -792,8 +792,8 @@
+ 					 int32_t *       right_tz,
+ 					 int32_t *       right_pad)
+ {
+-	int width1 = *width, left_pad1, right_pad1;
+-	int width2 = *width, left_pad2, right_pad2;
++	int32_t width1 = *width, left_pad1, right_pad1;
++	int32_t width2 = *width, left_pad2, right_pad2;
+ 
+ 	pad_repeat_get_scanline_bounds (source_image_width, vx, unit_x,
+ 					&width1, &left_pad1, &right_pad1);
+@@ -860,7 +860,7 @@
+     dst_type_t *dst_line;									\
+     mask_type_t *mask_line;									\
+     src_type_t *src_first_line;									\
+-    int       y1, y2;										\
++    int32_t     y1, y2;										\
+     pixman_fixed_t max_vx = INT32_MAX; /* suppress uninitialized variable warning */		\
+     pixman_vector_t v;										\
+     pixman_fixed_t vx, vy;									\

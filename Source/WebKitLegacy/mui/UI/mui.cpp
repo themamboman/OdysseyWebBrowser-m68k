@@ -243,3 +243,11 @@ IPTR getv(APTR obj, ULONG attr)
     return val;
 }
 #endif
+#if !OS(MORPHOS) && !OS(AROS)
+ULONG getv(APTR obj, ULONG attr)
+{
+    ULONG val;
+    GetAttr(attr, (Object *)obj, &val);
+    return val;
+}
+#endif

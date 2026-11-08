@@ -160,7 +160,7 @@ if (COMPILER_IS_GCC_OR_CLANG)
     if (${PORT} STREQUAL "MUI")
     WEBKIT_PREPEND_GLOBAL_COMPILER_FLAGS(-Wno-unused-parameter
                                          -Wno-write-strings
-                                         -Werror)
+                                         -Wno-error)
     endif ()
 endif ()
 

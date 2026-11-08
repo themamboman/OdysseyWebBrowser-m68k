@@ -28,6 +28,8 @@
 typedef (HTMLImageElement or HTMLVideoElement or HTMLCanvasElement or ImageBitmap or TypedOMCSSImageValue) CanvasImageSource;
 #elif defined(ENABLE_VIDEO) && ENABLE_VIDEO
 typedef (HTMLImageElement or HTMLVideoElement or HTMLCanvasElement or ImageBitmap) CanvasImageSource;
+#elif defined(ENABLE_CSS_TYPED_OM) && ENABLE_CSS_TYPED_OM
+typedef (HTMLImageElement or HTMLCanvasElement or ImageBitmap or TypedOMCSSImageValue) CanvasImageSource;
 #else
 typedef (HTMLImageElement or HTMLCanvasElement or ImageBitmap) CanvasImageSource;
 #endif

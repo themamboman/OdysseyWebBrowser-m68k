@@ -1173,6 +1173,20 @@ private:
         writeLittleEndian(m_buffer, i);
     }
 
+    // On this platform uint32_t/int32_t are distinct types from the native unsigned/int (both
+    // are typedef'd to long/unsigned long rather than int/unsigned int), so a plain unsigned/int
+    // argument is no longer an exact match for either -- it's an equally-ranked conversion to
+    // both write(uint32_t) and write(int32_t), which is ambiguous. These two disambiguate it.
+    void write(unsigned i)
+    {
+        write(static_cast<uint32_t>(i));
+    }
+
+    void write(int i)
+    {
+        write(static_cast<int32_t>(i));
+    }
+
     void write(double d)
     {
         union {
@@ -2016,7 +2030,7 @@ private:
             return false;
         }
         if (length == StringPoolTag) {
-            unsigned index = 0;
+            uint32_t index = 0;
             if (!readStringIndex(index)) {
                 fail();
                 return false;
@@ -2714,7 +2728,7 @@ private:
             fail();
             return JSValue();
         }
-        unsigned size = 0;
+        uint32_t size = 0;
         if (!read(size))
             return JSValue();
 
@@ -2801,7 +2815,7 @@ private:
             return toJS(m_exec, jsCast<JSDOMGlobalObject*>(m_globalObject), file.get());
         }
         case FileListTag: {
-            unsigned length = 0;
+            uint32_t length = 0;
             if (!read(length))
                 return JSValue();
             Vector<Ref<File>> files;
@@ -2898,7 +2912,7 @@ private:
             return RegExpObject::create(vm, m_globalObject->regExpStructure(), regExp);
         }
         case ObjectReferenceTag: {
-            unsigned index = 0;
+            uint32_t index = 0;
             if (!readConstantPoolIndex(m_gcBuffer, index)) {
                 fail();
                 return JSValue();
@@ -3052,7 +3066,7 @@ private:
     bool m_isDOMGlobalObject;
     const uint8_t* m_ptr;
     const uint8_t* m_end;
-    unsigned m_version;
+    uint32_t m_version;
     Vector<CachedString> m_constantPool;
     const Vector<RefPtr<MessagePort>>& m_messagePorts;
     ArrayBufferContentsArray* m_arrayBufferContents;

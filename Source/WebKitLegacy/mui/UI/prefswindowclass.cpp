@@ -275,6 +275,8 @@ STATIC CONST CONST_STRPTR useragents_labels[] =
 #define OSHEADER "AROS x86_64"
 #elif OS(MORPHOS)
 #define OSHEADER "Macintosh; PowerPC MorphOS %u.%u"
+#elif defined(__AMIGAOS3__)
+#define OSHEADER "AmigaOS 3.1; 68k"
 #endif
 const char verfmt[] = "Mozilla/5.0 (" OSHEADER "; Odyssey Web Browser; rv:" VERSION ") AppleWebKit/" WEBKITVER " (KHTML, like Gecko) OWB/" VERSION " Safari/" WEBKITVER;
 STATIC char odysseyuseragent[sizeof(verfmt) + 2 * (10 - 2)];
@@ -955,7 +957,7 @@ DEFNEW
 
                                 Child, HGroup,
                                     Child, MakeLabel(GSI(MSG_PREFSWINDOW_SECURITY_CERTIFICATE_PATH)),
-                                    Child, str_certificatepath = (Object *) MakeFileString(GSI(MSG_PREFSWINDOW_SECURITY_CERTIFICATE_PATH), "ENV:SYS/Certificates/ca-bundle.crt", MAKE_ID('S','S','C','P')),
+                                    Child, str_certificatepath = (Object *) MakeFileString(GSI(MSG_PREFSWINDOW_SECURITY_CERTIFICATE_PATH), "PROGDIR:Certificates/ca-bundle.crt", MAKE_ID('S','S','C','P')),
                                 End,
                                 Child, ColGroup(3),
                                     Child, ch_ignoresslerrors = (Object *) MakePrefsCheck(GSI(MSG_PREFSWINDOW_SECURITY_IGNORE_SSL_ERRORS), FALSE, MAKE_ID('S','S','I','E')),
@@ -1675,7 +1677,11 @@ DEFGET
 
         case MA_OWBApp_CertificatePath:
         {
-            *msg->opg_Storage = (IPTR) getv(data->str_certificatepath, MUIA_String_Contents);
+            /* str_certificatepath is the Popasl object from MakeFileString(); read the
+               contents from its string gadget (classic MUI's Popstring doesn't forward
+               MUIA_String_Contents the way MorphOS MUI does). */
+            Object *str = (Object *) getv(data->str_certificatepath, MUIA_Popstring_String);
+            *msg->opg_Storage = (IPTR) getv(str ? str : data->str_certificatepath, MUIA_String_Contents);
         }
         return TRUE;
 

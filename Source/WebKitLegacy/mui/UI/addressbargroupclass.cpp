@@ -203,7 +203,7 @@ DEFGET
     switch (msg->opg_AttrID)
     {
         case MUIA_String_Contents:
-                  return DoMethodA(data->pop_path, (_Msg_*) msg);
+                  return DoMethodA(data->pop_path, (Msg)msg);
 
         case MA_AddressBarGroup_PopString:
             *msg->opg_Storage = (IPTR) data->pop_path;
@@ -228,7 +228,7 @@ DEFGET
 DEFMMETHOD(List_InsertSingle)
 {
     GETDATA;
-    return DoMethodA(data->pop_path, (_Msg_*) msg);
+    return DoMethodA(data->pop_path, (Msg)msg);
 }
 
 DEFSMETHOD(OWBWindow_LoadURL)
@@ -237,7 +237,7 @@ DEFSMETHOD(OWBWindow_LoadURL)
     {
         GETDATA;
         msg->url = (TEXT *)getv(data->pop_path, MUIA_String_Contents);
-        DoMethodA(_win(obj), (_Msg_*) msg);
+        DoMethodA(_win(obj), (Msg)msg);
     }
 
     return 0;

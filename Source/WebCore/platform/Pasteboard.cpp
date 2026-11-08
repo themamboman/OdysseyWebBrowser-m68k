@@ -53,7 +53,7 @@ bool Pasteboard::canExposeURLToDOMWhenPasteboardContainsFiles(const String& urlS
 
 Ref<SharedBuffer> PasteboardCustomData::createSharedBuffer() const
 {
-    const static unsigned currentCustomDataSerializationVersion = 1;
+    const static uint32_t currentCustomDataSerializationVersion = 1;
 
     WTF::Persistence::Encoder encoder;
     encoder << currentCustomDataSerializationVersion;
@@ -65,11 +65,11 @@ Ref<SharedBuffer> PasteboardCustomData::createSharedBuffer() const
 
 PasteboardCustomData PasteboardCustomData::fromSharedBuffer(const SharedBuffer& buffer)
 {
-    const static unsigned maxSupportedDataSerializationVersionNumber = 1;
+    const static uint32_t maxSupportedDataSerializationVersionNumber = 1;
 
     PasteboardCustomData result;
     WTF::Persistence::Decoder decoder { reinterpret_cast<const uint8_t*>(buffer.data()), buffer.size() };
-    unsigned version;
+    uint32_t version;
     if (!decoder.decode(version) || version > maxSupportedDataSerializationVersionNumber)
         return { };
 

@@ -35,6 +35,8 @@
 #include "config.h"
 #include "FrameLoader.h"
 
+#include <stdio.h>
+
 #include "AXObjectCache.h"
 #include "ApplicationCacheHost.h"
 #include "BackForwardController.h"

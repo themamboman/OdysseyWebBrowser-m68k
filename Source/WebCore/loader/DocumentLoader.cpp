@@ -30,6 +30,8 @@
 #include "config.h"
 #include "DocumentLoader.h"
 
+#include <stdio.h>
+
 #include "ApplicationCacheHost.h"
 #include "Archive.h"
 #include "ArchiveResourceCollection.h"
@@ -437,8 +439,9 @@ void DocumentLoader::finishedLoading()
     if (!maybeCreateArchive()) {
         // If this is an empty document, it will not have actually been created yet. Commit dummy data so that
         // DocumentWriter::begin() gets called and creates the Document.
-        if (!m_gotFirstByte)
+        if (!m_gotFirstByte) {
             commitData(0, 0);
+        }
         frameLoader()->client().finishedLoading(this);
     }
 
@@ -448,8 +451,9 @@ void DocumentLoader::finishedLoading()
     clearMainResourceLoader();
     if (!frameLoader())
         return;
-    if (!frameLoader()->stateMachine().creatingInitialEmptyDocument())
+    if (!frameLoader()->stateMachine().creatingInitialEmptyDocument()) {
         frameLoader()->checkLoadComplete();
+    }
 
     // If the document specified an application cache manifest, it violates the author's intent if we store it in the memory cache
     // and deny the appcache the chance to intercept it in the future, so remove from the memory cache.
@@ -1696,8 +1700,9 @@ bool DocumentLoader::isMultipartReplacingLoad() const
 bool DocumentLoader::maybeLoadEmpty()
 {
     bool shouldLoadEmpty = !m_substituteData.isValid() && (m_request.url().isEmpty() || SchemeRegistry::shouldLoadURLSchemeAsEmptyDocument(m_request.url().protocol().toStringWithoutCopying()));
-    if (!shouldLoadEmpty && !frameLoader()->client().representationExistsForURLScheme(m_request.url().protocol().toStringWithoutCopying()))
+    if (!shouldLoadEmpty && !frameLoader()->client().representationExistsForURLScheme(m_request.url().protocol().toStringWithoutCopying())) {
         return false;
+    }
 
     if (m_request.url().isEmpty() && !frameLoader()->stateMachine().creatingInitialEmptyDocument()) {
         m_request.setURL(WTF::blankURL());
@@ -1721,7 +1726,8 @@ void DocumentLoader::startLoadingMainResource()
 
     Ref<DocumentLoader> protectedThis(*this);
 
-    if (maybeLoadEmpty()) {
+    bool loadedEmpty = maybeLoadEmpty();
+    if (loadedEmpty) {
         RELEASE_LOG_IF_ALLOWED("startLoadingMainResource: Returning empty document (frame = %p, main = %d)", m_frame, m_frame ? m_frame->isMainFrame() : false);
         return;
     }

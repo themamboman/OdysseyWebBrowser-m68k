@@ -416,7 +416,11 @@ inline uint8_t roundAndClampColorChannel(int value)
 
 inline uint8_t roundAndClampColorChannel(float value)
 {
-    return std::max(0.f, std::min(255.f, std::round(value)));
+    // std::round isn't exposed into the std:: namespace by this target's libstdc++ <cmath>, but
+    // the plain C ::roundf exists fine in the m68k newlib/libm (same situation as ::log1p
+    // elsewhere in this port). Using the float-returning roundf (not round/double) keeps this
+    // consistent with the surrounding float-typed std::max/std::min.
+    return std::max(0.f, std::min(255.f, ::roundf(value)));
 }
 
 inline uint16_t fastMultiplyBy255(uint16_t value)

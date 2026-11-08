@@ -1,0 +1,51 @@
+--- a/sqlite3.c
++++ b/sqlite3.c
+@@ -43123,6 +43123,15 @@
+     newOffset = lseek(id->h, offset, SEEK_SET);
+     SimulateIOError( newOffset = -1 );
+     if( newOffset<0 ){
++#ifdef __amigaos__
++      /* AmigaDOS Seek() fails beyond end of file, where POSIX allows it and read() returns 0. clib2
++      ** reports that as EIO, which this VFS would turn into SQLITE_CORRUPT. Report end of file. */
++      { struct stat st;
++        int seekErrno = errno;
++        if( osFstat(id->h, &st)==0 && offset>=st.st_size ) return prior;
++        errno = seekErrno;
++      }
++#endif
+       storeLastErrno((unixFile*)id, errno);
+       return -1;
+     }
+@@ -43251,6 +43260,15 @@
+   do{
+     i64 iSeek = lseek(fd, iOff, SEEK_SET);
+     SimulateIOError( iSeek = -1 );
++#ifdef __amigaos__
++    /* AmigaDOS Seek() fails beyond end of file. Grow the file first, as POSIX write() would. */
++    if( iSeek<0 ){
++      struct stat st;
++      if( osFstat(fd, &st)==0 && iOff>st.st_size && osFtruncate(fd, (off_t)iOff)==0 ){
++        iSeek = lseek(fd, iOff, SEEK_SET);
++      }
++    }
++#endif
+     if( iSeek<0 ){
+       rc = -1;
+       break;
+@@ -46661,6 +46679,16 @@
+   path.nSymlink = 0;
+   path.nOut = nOut;
+   path.zOut = zOut;
++#ifdef __amigaos__
++  /* "Volume:dir/file" is already absolute on AmigaOS. Prefixing the cwd and
++  ** lstat()ing each '/'-separated piece produces names like "/PROGDIR:Conf",
++  ** which AmigaDOS treats as a volume and raises an "insert volume" requester. */
++  if( strchr(zPath, ':')!=0 ){
++    if( (int)strlen(zPath)+1 > nOut ) return SQLITE_CANTOPEN_BKPT;
++    memcpy(zOut, zPath, strlen(zPath)+1);
++    return SQLITE_OK;
++  }
++#endif
+   if( zPath[0]!='/' ){
+     char zPwd[SQLITE_MAX_PATHLEN+2];
+     if( osGetcwd(zPwd, sizeof(zPwd)-2)==0 ){

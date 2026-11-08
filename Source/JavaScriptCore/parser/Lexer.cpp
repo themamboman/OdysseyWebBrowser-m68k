@@ -888,7 +888,7 @@ inline void Lexer<T>::record16(int c)
     ASSERT(c <= static_cast<int>(USHRT_MAX));
     m_buffer16.append(static_cast<UChar>(c));
 }
-    
+
 template<typename CharacterType> inline void Lexer<CharacterType>::recordUnicodeCodePoint(UChar32 codePoint)
 {
     ASSERT(codePoint >= 0);

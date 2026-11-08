@@ -84,19 +84,19 @@ DEFGET
 DEFTMETHOD(ScriptManagerGroup_Load)
 {
     GETDATA;
-    return DoMethodA(data->group, (_Msg_*)msg);
+    return DoMethodA(data->group, (Msg)msg);
 }
 
 DEFSMETHOD(ScriptManagerGroup_InjectScripts)
 {
     GETDATA;
-    return DoMethodA(data->group, (_Msg_*)msg);
+    return DoMethodA(data->group, (Msg)msg);
 }
 
 DEFSMETHOD(ScriptManagerGroup_ScriptsForURL)
 {
     GETDATA;
-    return DoMethodA(data->group, (_Msg_*)msg);
+    return DoMethodA(data->group, (Msg)msg);
 }
 
 BEGINMTABLE

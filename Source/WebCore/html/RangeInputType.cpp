@@ -64,8 +64,8 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-static const int rangeDefaultMinimum = 0;
-static const int rangeDefaultMaximum = 100;
+static const int32_t rangeDefaultMinimum = 0;
+static const int32_t rangeDefaultMaximum = 100;
 static const int rangeDefaultStep = 1;
 static const int rangeDefaultStepBase = 0;
 static const int rangeStepScaleFactor = 1;
@@ -122,7 +122,7 @@ StepRange RangeInputType::createStepRange(AnyStepHandling anyStepHandling) const
 
     const AtomicString& precisionValue = element()->attributeWithoutSynchronization(precisionAttr);
     if (!precisionValue.isNull()) {
-        const Decimal step = equalLettersIgnoringASCIICase(precisionValue, "float") ? Decimal::nan() : 1;
+        const Decimal step = equalLettersIgnoringASCIICase(precisionValue, "float") ? Decimal::nan() : Decimal(static_cast<int32_t>(1));
         return StepRange(minimum, RangeLimitations::Valid, minimum, maximum, step, rangeStepDescription);
     }
 
@@ -211,8 +211,8 @@ void RangeInputType::handleKeydownEvent(KeyboardEvent& event)
 
     // FIXME: We can't use stepUp() for the step value "any". So, we increase
     // or decrease the value by 1/100 of the value range. Is it reasonable?
-    const Decimal step = equalLettersIgnoringASCIICase(element()->attributeWithoutSynchronization(stepAttr), "any") ? (stepRange.maximum() - stepRange.minimum()) / 100 : stepRange.step();
-    const Decimal bigStep = std::max((stepRange.maximum() - stepRange.minimum()) / 10, step);
+    const Decimal step = equalLettersIgnoringASCIICase(element()->attributeWithoutSynchronization(stepAttr), "any") ? (stepRange.maximum() - stepRange.minimum()) / Decimal(static_cast<int32_t>(100)) : stepRange.step();
+    const Decimal bigStep = std::max((stepRange.maximum() - stepRange.minimum()) / Decimal(static_cast<int32_t>(10)), step);
 
     bool isVertical = false;
     if (auto* renderer = element()->renderer()) {

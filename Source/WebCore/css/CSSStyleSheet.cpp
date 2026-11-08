@@ -307,7 +307,7 @@ ExceptionOr<void> CSSStyleSheet::deleteRule(unsigned index)
     return { };
 }
 
-ExceptionOr<int> CSSStyleSheet::addRule(const String& selector, const String& style, Optional<unsigned> index)
+ExceptionOr<int> CSSStyleSheet::addRule(const String& selector, const String& style, Optional<uint32_t> index)
 {
     StringBuilder text;
     text.append(selector);

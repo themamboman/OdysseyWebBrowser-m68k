@@ -115,6 +115,7 @@ extern "C"
 #include <devices/rawkeycodes.h>
 #include <devices/inputevent.h>
 #include <proto/cybergraphics.h>
+#include <rtg_compat.h> /* classic-CyberGraphX WritePixelArrayAlpha() emulation, see header */
 #if ENABLE(VIDEO) && !OS(AROS)
 #include <proto/cgxvideo.h>
 #endif
@@ -188,6 +189,13 @@ static __inline IPTR _CALLFUNC2(void (*func)(void), IPTR arg1, IPTR arg2)
     return res;
 }
 #define CALLFUNC2(f,a1,a2) _CALLFUNC2((void (*)(void))(f),(IPTR)(a1),(IPTR)(a2))
+#elif !OS(AROS)
+/* MorphOS's _CFCALL/CALLFUNC1/2 exist to call a 68k plugin function from
+ * PowerPC-native code via EmulCallDirect68k (a 68k-emulation trampoline) --
+ * classic AmigaOS3 IS m68k natively, so no trampoline is needed at all,
+ * just a direct function-pointer call. */
+#define CALLFUNC1(f,a1) (((IPTR (*)(IPTR))(f))((IPTR)(a1)))
+#define CALLFUNC2(f,a1,a2) (((IPTR (*)(IPTR,IPTR))(f))((IPTR)(a1),(IPTR)(a2)))
 #endif
 
 /**/
@@ -1598,11 +1606,31 @@ DEFSMETHOD(OWBBrowser_Scroll)
 
     if(data->rp_offscreen.BitMap)
     {
+#if defined(__AMIGAOS3__)
+        /* ScrollRaster() on a layer-less RastPort doesn't go through BltBitMap(),
+           so on an RTG (Picasso96/CGX) bitmap it doesn't move the pixels. Do the
+           same scroll as an overlapping BltBitMap() of the bitmap onto itself
+           (allowed by the autodocs, handled by the RTG system). The uncovered
+           strip is repainted by WebKit right after. */
+        LONG dx = data->dx, dy = data->dy;
+        LONG w = data->scrollrect.width() - (dx < 0 ? -dx : dx);
+        LONG h = data->scrollrect.height() - (dy < 0 ? -dy : dy);
+        if(w > 0 && h > 0)
+        {
+            LONG srcx = data->scrollrect.x() + (dx > 0 ? dx : 0);
+            LONG srcy = data->scrollrect.y() + (dy > 0 ? dy : 0);
+            LONG dstx = data->scrollrect.x() + (dx < 0 ? -dx : 0);
+            LONG dsty = data->scrollrect.y() + (dy < 0 ? -dy : 0);
+            BltBitMap(data->rp_offscreen.BitMap, srcx, srcy,
+                      data->rp_offscreen.BitMap, dstx, dsty, w, h, 0xC0, 0xFF, NULL);
+        }
+#else
         ScrollRaster(&data->rp_offscreen, data->dx, data->dy,
                           data->scrollrect.x(),
                           data->scrollrect.y(),
                           data->scrollrect.width() + data->scrollrect.x() - 1,
                           data->scrollrect.height() + data->scrollrect.y() - 1);
+#endif
     }
 
     data->pendingscrollrect = data->scrollrect;
@@ -3495,7 +3523,7 @@ DEFMMETHOD(DragFinish)
             IntPoint position(data->last_drag_position);
             DragData dragData((DataObjectMorphOS *) dataObject, position, position, (DragOperation) data->dragoperation);
             D(kprintf("dragExited\n"));
-            core(data->view->webView)->dragController().dragExited(&dragData);
+            core(data->view->webView)->dragController().dragExited(dragData);
         }
 #endif
 

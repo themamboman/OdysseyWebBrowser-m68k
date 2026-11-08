@@ -53,7 +53,7 @@ static double enforceRange(ExecState& state, double x, double minimum, double ma
         throwTypeError(&state, scope, rangeErrorString(x, minimum, maximum));
         return 0;
     }
-    x = trunc(x);
+    x = ::trunc(x);
     if (x < minimum || x > maximum) {
         throwTypeError(&state, scope, rangeErrorString(x, minimum, maximum));
         return 0;

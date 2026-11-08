@@ -88,11 +88,14 @@ inline unsigned JSStringJoiner::joinedLength(ExecState& state) const
     if (!numberOfStrings)
         return 0;
 
-    Checked<int32_t, RecordOverflow> separatorLength = m_separator.length();
-    Checked<int32_t, RecordOverflow> totalSeparatorsLength = separatorLength * (numberOfStrings - 1);
-    Checked<int32_t, RecordOverflow> totalLength = totalSeparatorsLength + m_accumulatedStringsLength;
+    // Deliberately `int` rather than int32_t: on some targets int32_t is a typedef for `long`
+    // rather than `int`, and WTF::ArithmeticOperations below has no specialization for mixing
+    // a `long` Checked value with the `unsigned` (int) of m_accumulatedStringsLength.
+    Checked<int, RecordOverflow> separatorLength = m_separator.length();
+    Checked<int, RecordOverflow> totalSeparatorsLength = separatorLength * (numberOfStrings - 1);
+    Checked<int, RecordOverflow> totalLength = totalSeparatorsLength + m_accumulatedStringsLength;
 
-    int32_t result;
+    int result;
     if (totalLength.safeGet(result) == CheckedState::DidOverflow) {
         throwOutOfMemoryError(&state, scope);
         return 0;

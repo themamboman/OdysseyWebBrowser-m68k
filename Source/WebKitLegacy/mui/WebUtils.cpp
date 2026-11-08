@@ -28,8 +28,11 @@
 
 #include "WebUtils.h"
 #include <sys/types.h>
+#if !defined(__AMIGAOS3__)
 #include <dirent.h>
+#endif
 #include <errno.h>
+#include <wtf/FileSystem.h>
 #include <string.h>
 #include <string>
 
@@ -52,6 +55,7 @@ bool isDirectory(const char* url)
     if (!strncmp("file://", url, 7))
        urlDir = urlDir.substr(7);
 
+#if !defined(__AMIGAOS3__)
     DIR* dir = opendir(urlDir.c_str());
     if (!dir) {
         if (errno == ENOTDIR || errno == ENOENT)
@@ -60,5 +64,15 @@ bool isDirectory(const char* url)
     }
     closedir(dir);
     return true;
+#else
+    /* Same dirent.h gap as utils.cpp::get_available_dictionaries() -- see
+     * that comment / WebCore_status.md. WTF::FileSystem::fileIsDirectory()
+     * is the real check over dos.library for this target. This drops the
+     * original's odd "opendir failed for some other reason => assume
+     * true" fallback, which fileIsDirectory() has no equivalent for; a
+     * path that genuinely is not a directory now correctly returns false
+     * instead of true in that edge case. */
+    return FileSystem::fileIsDirectory(WTF::String::fromUTF8(urlDir.c_str()), FileSystem::ShouldFollowSymbolicLinks::Yes);
+#endif
 }
 

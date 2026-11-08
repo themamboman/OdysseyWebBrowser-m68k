@@ -2344,6 +2344,13 @@ NULL
 
 ULONG icu_check(void)
 {
+#if defined(__AMIGAOS3__)
+    /* The classic AmigaOS build uses ICU 55, which loads its data on demand
+       from PROGDIR:Resource/icudt55b/ (see u_setDataDirectory() in main.cpp),
+       so these ICU 49 data files are never used. Lock()ing all 2336 of them
+       took ~9.5 s at every start-up. */
+    return TRUE;
+#endif
     ULONG passed = TRUE;
     const char **ptr = icufiles;
 

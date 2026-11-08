@@ -52,6 +52,14 @@ WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_REMOTE_INSPECTOR PRIVATE OFF)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_SMOOTH_SCROLLING PRIVATE OFF)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_WEBGL PRIVATE OFF)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_SERVICE_WORKER PRIVATE OFF)
+# libpsl was never cross-built for m68k-amigaos (not in any agent's dependency list); cookie
+# domain/public-suffix validation just falls back to WebCore's simpler built-in heuristic.
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_PUBLIC_SUFFIX_LIST PRIVATE OFF)
+# libxml2 on this port is Agent B's hand-written stub (agent-b-stubs/libxml2/libxml_stub.c), not a
+# real parser -- it has no parserInternals.h and couldn't actually run an XSLT transform even if it
+# did. Disabling XSLT avoids compiling against fake libxml2 internals for a feature that would
+# silently misbehave at runtime anyway.
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_XSLT PRIVATE OFF)
 
 #Candidates
 #ENABLE_CONTENT_EXTENSIONS
@@ -81,7 +89,7 @@ set(ENABLE_PLUGIN_PROCESS ON)
 set(ENABLE_WEBKIT OFF)
 set(ENABLE_WEBKIT_LEGACY ON)
 
-set(WTF_USE_ICU_UNICODE 1)
+set(WTF_USE_ICU_UNICODE 0)
 set(WTF_USE_CURL 1)
 
 set(WTF_OUTPUT_NAME WTFMUI)
@@ -106,6 +114,39 @@ add_definitions(-DUSER_AGENT_GTK_MINOR_VERSION=1)
 #find_package(PNG REQUIRED)
 #find_package(Sqlite REQUIRED)
 #find_package(ZLIB REQUIRED)
+
+if (WEBKIT_TARGET_AMIGAOS3)
+    # Cairo/FreeType/Fontconfig/HarfBuzz were cross-built for m68k and installed to the target
+    # sysroot (${WEBKIT_AMIGA_SYSROOT}/include, lib), but find_package() above is commented out
+    # project-wide, so WebCore's platform/Cairo.cmake and platform/FreeType.cmake see empty
+    # CAIRO_INCLUDE_DIRS etc. Set them directly from the known sysroot layout instead of
+    # uncommenting find_package(): that goes through pkg-config, which on this dev machine would
+    # happily resolve to the HOST's own (x86_64) cairo/freetype if pkg-config isn't explicitly
+    # redirected at the m68k .pc files -- and CMAKE_FIND_ROOT_PATH is deliberately empty in
+    # m68k-amigaos.cmake, so there's no sysroot isolation to fall back on.
+    set(CAIRO_INCLUDE_DIRS "${WEBKIT_AMIGA_SYSROOT}/include/cairo")
+    set(CAIRO_LIBRARIES cairo)
+    set(FREETYPE_INCLUDE_DIRS "${WEBKIT_AMIGA_SYSROOT}/include/freetype2")
+    set(FREETYPE_LIBRARIES freetype)
+    set(FONTCONFIG_INCLUDE_DIRS "${WEBKIT_AMIGA_SYSROOT}/include")
+    set(FONTCONFIG_LIBRARIES fontconfig)
+    set(HARFBUZZ_INCLUDE_DIRS "${WEBKIT_AMIGA_SYSROOT}/include/harfbuzz")
+    set(HARFBUZZ_LIBRARIES harfbuzz)
+    set(PNG_INCLUDE_DIRS "${WEBKIT_AMIGA_SYSROOT}/include/libpng16")
+    set(PNG_LIBRARIES png16)
+
+    # Agent B's stub libraries live directly under the toolchain prefix's include/lib (see the
+    # comment by WEBKIT_AMIGA_TOOLCHAIN_PREFIX in m68k-amigaos.cmake), not WEBKIT_AMIGA_SYSROOT.
+    # Pointing *_LIBRARIES straight at the .a files (rather than a bare name + -L) sidesteps the
+    # fact that this directory isn't on the linker's default search path the way the main sysroot's
+    # lib dir is.
+    set(SQLITE_INCLUDE_DIR "${WEBKIT_AMIGA_TOOLCHAIN_PREFIX}/include")
+    set(SQLITE_LIBRARIES "${WEBKIT_AMIGA_TOOLCHAIN_PREFIX}/lib/libsqlite3.a")
+    set(LIBXML2_INCLUDE_DIR "${WEBKIT_AMIGA_TOOLCHAIN_PREFIX}/include")
+    set(LIBXML2_LIBRARIES "${WEBKIT_AMIGA_TOOLCHAIN_PREFIX}/lib/libxml2.a")
+    set(LIBXSLT_INCLUDE_DIR "${WEBKIT_AMIGA_TOOLCHAIN_PREFIX}/include")
+    set(LIBXSLT_LIBRARIES "${WEBKIT_AMIGA_TOOLCHAIN_PREFIX}/lib/libxslt.a")
+endif ()
 
 # We don't use find_package for GLX because it is part of -lGL, unlike EGL.
 #find_package(OpenGL)

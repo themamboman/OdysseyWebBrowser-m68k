@@ -124,6 +124,15 @@ U_INTERNAL void U_EXPORT2 u_setTimeZoneFilesDirectory(const char *path, UErrorCo
 #   define U_FILE_SEP_STRING "\\"
 #   define U_FILE_ALT_SEP_STRING "/"
 #   define U_PATH_SEP_STRING ";"
+#elif defined(__amigaos3__) || defined(__AMIGAOS3__)
+    /* AmigaOS paths contain ':' after the volume/assign name (PROGDIR:,
+       SYS:), so ':' cannot separate entries of the ICU data path. */
+#   define U_FILE_SEP_CHAR '/'
+#   define U_FILE_ALT_SEP_CHAR '/'
+#   define U_PATH_SEP_CHAR ';'
+#   define U_FILE_SEP_STRING "/"
+#   define U_FILE_ALT_SEP_STRING "/"
+#   define U_PATH_SEP_STRING ";"
 #else
 #   define U_FILE_SEP_CHAR '/'
 #   define U_FILE_ALT_SEP_CHAR '/'

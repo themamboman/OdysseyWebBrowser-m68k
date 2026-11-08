@@ -1,46 +1,60 @@
-# OdysseyWebBrowser
+# OdysseyWebBrowser for classic AmigaOS 3.x (m68k)
 
-Notes about branches:
+A port of [Odyssey Web Browser](https://github.com/deadwood2/OdysseyWebBrowser) (OWB), the
+WebKit-based browser for MorphOS, AROS and AmigaOS 4, to classic 68k AmigaOS 3.x. It is based
+on WebKitGTK 2.24.4 (February 2019) and renders modern sites with HTML5, CSS and JavaScript,
+with HTTPS through AmiSSL.
 
-* webkit  - branch that only contains original WebKit codes at certain revisions/releases. Source changes between versions/releases are squashed into in (most cases) one commit.
-* master  - branch that contains commits from webkit branch combined with Odyssey Web Browser source codes which don't conflict with codes from webkit branch. Check master-editable file for details.
-* odyssey - branch that contains remaining Odyssey Web Browser source changes rebased onto certain version of master branch.
+**Status: early test release.** It works, but it is slow and needs a lot of memory. Binaries
+are released on [Aminet](https://aminet.net/) as `OWB-m68k.lha`.
 
-In order to build/develop the Odyssey Web Browser, checkout branch **odyssey**.
+This branch, `amigaos3-m68k`, is based on upstream's `odyssey` branch.
 
+## Requirements
 
-## Build Odyssey for x86_64
+- AmigaOS 3.x, 68020 or better with an FPU
+- RTG graphics (Picasso96 or CyberGraphX)
+- MUI, AmiSSL 5.27 or newer, a TCP/IP stack
+- 256 MB or more of fast RAM
 
-Please note that building Odyssey requires considerable resources. Build machine of 12 cores, 32 GB RAM and NVME disk builds Odyssey in 12 minutes with 'm -12'. Build machine of 3 cores, 24 GB RAM and SATA SSD disk builds Odyssey in 90 minutes with 'm -3'.
+Tested so far only in WinUAE (AmiKit XE): 68020 + 68881 with JIT, UAEgfx RTG, 384 MB.
 
+## Building
 
-### Building cross compiler and SDK
+See [docs/amiga/BUILDING.md](docs/amiga/BUILDING.md). It cross-compiles on Linux with the
+AmigaPorts m68k-amigaos-gcc (GCC 16) and clib2. The guide describes the environment the first
+release was built in; a from-scratch guide is in progress.
 
-Before building Odyssey you need to have a working AROS cross compiler and SDK built and installed on your machine. Please follow this turorial to build them:
-
-https://arosnews.github.io/how-to-cross-compile-aros-hosted-wsl/
-
-Notes:
-
-* If you are building directly under linux, you can skip first chapter about WSL2. Start with chapter about installing required development packages.
-* Skip the last chapter about installing i386 version, this is not needed for this build.
-* Instead of checking out master, make sure you checkout branch 'release-20241102' in both AROS and contrib
-
-As an effect of the whole process you should have two 'commands' x86_64-aros-gcc and x86_64-aros-g++ available in path. The compilers should be in version 6.5.0.
-
-### Building Odyssey
-
-Run the following script in the root of Odyssey source tree:
-
-```
-$ ./rebuild.sh
+```bash
+git clone --recurse-submodules -b amigaos3-m68k https://github.com/themamboman/OdysseyWebBrowser-m68k.git
 ```
 
-Select option 11) x86_64-aros (Release). Once the script completes:
+## Layout of the port
 
-```
-$ cd cross-build-x86_64-aros
-$ make
-```
+| Path | Contents |
+|---|---|
+| `Source/cmake/m68k-amigaos.cmake` | CMake toolchain file |
+| `Source/WTF/wtf/amiga/` | Threading, memory allocator and file system for AmigaOS 3.x |
+| `aos_multithreading_library/` | Submodule: [aos_multithreading_library](https://github.com/themamboman/aos_multithreading_library) |
+| `amiga/` | RTG layer, header stubs and small support libraries |
+| `docs/amiga/` | Build guide and patches to third-party libraries |
+| `Tools/OdysseyWebBrowser/main.cpp` | Start-up, plus replacements for broken C library maths |
 
-After build completes, your executable will be available in 'cross-build-x86_64-aros/bin' directory.
+## Known issues
+
+- Slow: JavaScript-heavy pages can take a minute or more
+- No right-click context menu
+- `file:///` URLs do not open
+- Running out of memory can crash the whole system
+- No video or audio; YouTube does not load
+
+## Credits and license
+
+- Odyssey Web Browser: Fabien Coeurjoly, Jacek Piszczek and Krzysztof Smiechowicz
+  (deadwood); see the upstream repository
+- WebKit: Apple, the WebKitGTK team and contributors
+- 68k port: TheMamboMan, with help from Claude (Anthropic)
+
+WebKit is licensed under the LGPL 2.1 ([LICENSE.LGPL](LICENSE.LGPL)) and BSD-style licenses;
+OWB's own code is under a BSD-style license (see the readme in `Dist/`). The bundled fonts are
+Liberation Sans and Mono under the SIL Open Font License 1.1 (`Dist/Fonts/LICENSE.txt`).

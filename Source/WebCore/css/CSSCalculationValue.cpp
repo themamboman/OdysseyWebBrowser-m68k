@@ -30,6 +30,7 @@
  */
 
 #include "config.h"
+#include <math.h>
 #include "CSSCalculationValue.h"
 
 #include "CSSParser.h"
@@ -917,7 +918,7 @@ static RefPtr<CSSCalcExpressionNode> createCSS(const CalcExpressionNode& node, c
     switch (node.type()) {
     case CalcExpressionNodeType::Number: {
         float value = toCalcExpressionNumber(node).value();
-        return CSSCalcPrimitiveValue::create(CSSPrimitiveValue::create(value, CSSPrimitiveValue::CSS_NUMBER), value == std::trunc(value));
+        return CSSCalcPrimitiveValue::create(CSSPrimitiveValue::create(value, CSSPrimitiveValue::CSS_NUMBER), value == ::trunc(value));
     }
     case CalcExpressionNodeType::Length:
         return createCSS(toCalcExpressionLength(node).length(), style);

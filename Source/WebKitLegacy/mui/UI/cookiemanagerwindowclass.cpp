@@ -87,13 +87,13 @@ DEFGET
 DEFSMETHOD(CookieManagerGroup_DidInsert)
 {
     GETDATA;
-    return DoMethodA(data->group, (_Msg_*)msg);
+    return DoMethodA(data->group, (Msg)msg);
 }
 
 DEFSMETHOD(CookieManagerGroup_DidRemove)
 {
     GETDATA;
-    return DoMethodA(data->group, (_Msg_*)msg);
+    return DoMethodA(data->group, (Msg)msg);
 }
 
 BEGINMTABLE

@@ -78,6 +78,18 @@ private:
         float a { 0 };
 
         CMYKAColor(const CMYKAColor&) = default;
+        /* A class with any user-declared constructor (even a defaulted
+         * copy constructor, as above) is not an aggregate, so brace-init
+         * at the CanvasStyle::CanvasStyle(float,float,float,float,float)
+         * call site can't use aggregate-initialization syntax -- some
+         * older GCC versions tolerated this anyway as a non-conforming
+         * extension; this one doesn't (confirmed via a real OWB build:
+         * "no matching function for call to CMYKAColor::CMYKAColor" --
+         * see WebCore_status.md). Explicit matching constructor instead. */
+        CMYKAColor(Color color, float c, float m, float y, float k, float a)
+            : color(color), c(c), m(m), y(y), k(k), a(a)
+        {
+        }
     };
 
     struct CurrentColor {

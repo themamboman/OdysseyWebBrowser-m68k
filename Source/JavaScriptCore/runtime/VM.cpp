@@ -27,6 +27,8 @@
  */
 
 #include "config.h"
+
+#include <cstdio>
 #include "VM.h"
 
 #include "ArgList.h"
@@ -263,7 +265,7 @@ VM::VM(VMType vmType, HeapType heapType)
 #if USE(CF)
     , m_runLoop(CFRunLoopGetCurrent())
 #endif // USE(CF)
-    , heap(this, heapType)
+    , heap((this), heapType)
     , fastMallocAllocator(std::make_unique<FastMallocAlignedMemoryAllocator>())
     , primitiveGigacageAllocator(std::make_unique<GigacageAlignedMemoryAllocator>(Gigacage::Primitive))
     , jsValueGigacageAllocator(std::make_unique<GigacageAlignedMemoryAllocator>(Gigacage::JSValue))
@@ -424,7 +426,7 @@ VM::VM(VMType vmType, HeapType heapType)
     Gigacage::addPrimitiveDisableCallback(primitiveGigacageDisabledCallback, this);
 
     heap.notifyIsSafeToCollect();
-    
+
     LLInt::Data::performAssertions(*this);
     
     if (UNLIKELY(Options::useProfiler())) {

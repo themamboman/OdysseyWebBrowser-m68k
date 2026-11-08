@@ -31,7 +31,9 @@ namespace WebCore {
 
 void CurlSSLHandle::platformInitialize()
 {
-    String caCertPath = "ENV:SYS/Certificates/ca-bundle.crt";
+    /* Shipped with OWB (Mozilla CA bundle from curl.se); classic AmigaOS has no
+       system-wide certificate store at the MorphOS location ENV:SYS/Certificates. */
+    String caCertPath = "PROGDIR:Certificates/ca-bundle.crt";
     setCACertPath(WTFMove(caCertPath));
 }
 

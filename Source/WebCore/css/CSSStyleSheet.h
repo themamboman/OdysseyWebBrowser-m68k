@@ -67,7 +67,7 @@ public:
     WEBCORE_EXPORT ExceptionOr<void> deleteRule(unsigned index);
     
     WEBCORE_EXPORT RefPtr<CSSRuleList> rules();
-    WEBCORE_EXPORT ExceptionOr<int> addRule(const String& selector, const String& style, Optional<unsigned> index);
+    WEBCORE_EXPORT ExceptionOr<int> addRule(const String& selector, const String& style, Optional<uint32_t> index);
     ExceptionOr<void> removeRule(unsigned index) { return deleteRule(index); }
     
     // For CSSRuleList.

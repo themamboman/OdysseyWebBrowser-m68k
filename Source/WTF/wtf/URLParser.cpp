@@ -2231,8 +2231,8 @@ Expected<uint32_t, URLParser::IPv4PieceParsingError> URLParser::parseIPv4Piece(C
         case State::Decimal:
             if (!isASCIIDigit(*iterator))
                 return makeUnexpected(IPv4PieceParsingError::Failure);
-            value *= 10;
-            value += *iterator - '0';
+            value *= static_cast<uint32_t>(10);
+            value += static_cast<uint32_t>(*iterator - '0');
             if (UNLIKELY(value.hasOverflowed()))
                 return makeUnexpected(IPv4PieceParsingError::Overflow);
             ++iterator;
@@ -2241,8 +2241,8 @@ Expected<uint32_t, URLParser::IPv4PieceParsingError> URLParser::parseIPv4Piece(C
             ASSERT(didSeeSyntaxViolation);
             if (*iterator < '0' || *iterator > '7')
                 return makeUnexpected(IPv4PieceParsingError::Failure);
-            value *= 8;
-            value += *iterator - '0';
+            value *= static_cast<uint32_t>(8);
+            value += static_cast<uint32_t>(*iterator - '0');
             if (UNLIKELY(value.hasOverflowed()))
                 return makeUnexpected(IPv4PieceParsingError::Overflow);
             ++iterator;
@@ -2251,8 +2251,8 @@ Expected<uint32_t, URLParser::IPv4PieceParsingError> URLParser::parseIPv4Piece(C
             ASSERT(didSeeSyntaxViolation);
             if (!isASCIIHexDigit(*iterator))
                 return makeUnexpected(IPv4PieceParsingError::Failure);
-            value *= 16;
-            value += toASCIIHexValue(*iterator);
+            value *= static_cast<uint32_t>(16);
+            value += static_cast<uint32_t>(toASCIIHexValue(*iterator));
             if (UNLIKELY(value.hasOverflowed()))
                 return makeUnexpected(IPv4PieceParsingError::Overflow);
             ++iterator;

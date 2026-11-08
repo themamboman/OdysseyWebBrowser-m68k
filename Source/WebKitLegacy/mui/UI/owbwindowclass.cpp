@@ -297,6 +297,36 @@ static struct Hook AppMsgHook = { {0, 0}, (HOOKFUNC)&AppMsgHookGate, NULL, NULL 
 #if OS(AROS)
 static struct Hook AppMsgHook = { {0, 0}, NULL, NULL, NULL };
 #endif
+#if !OS(MORPHOS) && !OS(AROS)
+/* Same body as the MorphOS branch above, ported from its REG_A1/REG_A2
+ * locals to GCC's m68k-amigaos register-parameter extension (see
+ * WebCore_status.md -- same technique already verified for the BOOPSI
+ * dispatcher and the ARexx hook). Register mapping matches MorphOS's own
+ * REG_A1/REG_A2 reads exactly: a1 = the AppMessage** (MUI's "message"
+ * argument, passed as MUIV_TriggerValue), a2 = the window Object*. */
+static LONG AppMsgFunc(struct AppMessage **x asm("a1"), Object *window asm("a2"))
+{
+    struct WBArg *ap;
+    struct AppMessage *amsg = *x;
+    int i;
+    char buf[256];
+
+    for(ap = amsg->am_ArgList, i = 0; i < amsg->am_NumArgs; i++,ap++)
+    {
+        if(NameFromLock(ap->wa_Lock, buf, sizeof(buf)))
+        {
+            char url[2048];
+            AddPart((STRPTR) buf, (STRPTR) ap->wa_Name, sizeof(buf));
+            snprintf(url, sizeof(url), "file:///%s", buf);
+
+            DoMethod(window, MM_OWBWindow_AddBrowser, url, FALSE, NULL, TRUE, FALSE, TRUE);
+        }
+    }
+
+    return(0);
+}
+static struct Hook AppMsgHook = { {0, 0}, (APTR)&AppMsgFunc, NULL, NULL };
+#endif
 
 DEFNEW
 {
@@ -319,37 +349,85 @@ DEFNEW
     if(!node)
         return 0;
 
+
+    /* Pulled out of the DoSuperNew tag list below (where it was previously
+     * inline, nested NewObject() calls with unspecified evaluation order)
+     * into separate, explicitly-sequenced statements with a tracepoint
+     * after each -- needed to bisect a stack-corruption crash (A7 smashed
+     * to 0, PC left pointing at garbage) happening somewhere in this one
+     * giant expression; plain printf()s can't be inserted inside it as
+     * originally written. */
+    Object *navChild = (Object *) NewObject(getnavigationgroupclass(), NULL, TAG_DONE);
+
+    fastlinkgroup = (Object *) NewObject(getquicklinkgroupclass(), NULL,
+                                         MA_QuickLinkGroup_Row, getv(app, MA_OWBApp_QuickLinkRows),
+                                         MA_QuickLinkGroup_Mode, getv(app, MA_OWBApp_QuickLinkLayout) | getv(app, MA_OWBApp_QuickLinkLook),
+                                         TAG_DONE);
+
+    Object *quickLinkParentObj = (Object *) NewObject(getquicklinkparentgroupclass(), NULL,
+                                                       MA_QuickLinkParentGroup_QLGroup, fastlinkgroup,
+                                                       TAG_DONE);
+
+    addressbargroup = (Object *) NewObject(getaddressbargroupclass(), NULL,
+                                           MA_AddressBarGroup_GoButton, getv(app, MA_OWBApp_ShowValidationButtons),
+                                           TAG_DONE);
+
+    searchgroup = (Object *) NewObject(getsearchbargroupclass(), NULL,
+                                       MA_SearchBarGroup_SearchButton, getv(app, MA_OWBApp_ShowValidationButtons),
+                                       TAG_DONE);
+
+    pagetitles = (Object *) NewObject(gettitleclass(), NULL, TAG_DONE);
+
+    findgroup = (Object *) NewObject(getfindtextclass(), NULL,
+                                     MUIA_ShowMe, FALSE,
+                                     MA_FindText_ShowAllMatches, TRUE,
+                                     MA_FindText_Closable, TRUE,
+                                     TAG_DONE);
+
+    zoneimage = (Object *) MUI_NewObject(MUIC_Dtpic,
+                                         MUIA_Dtpic_Name, "PROGDIR:resource/zone_local.png",
+                                         TAG_DONE);
+
+    secureimage = (Object *) MUI_NewObject(MUIC_Dtpic,
+                                           MUIA_Dtpic_Alpha, 0,
+                                           MUIA_Dtpic_Name, "PROGDIR:resource/zone_notsecure.png",
+                                           TAG_DONE);
+
+    privatebrowsingimage = (Object *) MUI_NewObject(MUIC_Dtpic,
+                                                    MUIA_Dtpic_Alpha, 0,
+#if !OS(AROS)
+                                                    MUIA_Dtpic_Name, "PROGDIR:resource/private_browsing.png",
+#else
+                                                    MUIA_Dtpic_Name, "PROGDIR:resource/private_browsing_a.png",
+#endif
+                                                    TAG_DONE);
+
+    userscriptimage = (Object *) MUI_NewObject(MUIC_Dtpic,
+                                               MUIA_Dtpic_Alpha, 0,
+                                               MUIA_Dtpic_Name, "PROGDIR:resource/scriptIcon.png",
+                                               TAG_DONE);
+
     obj = (Object *) DoSuperNew(cl, obj,
-        MUIA_Window_ScreenTitle, "Odyssey Web Browser " VERSION " (" OWB_BUILD_DATE ")",
+        MUIA_Window_ScreenTitle, "Odyssey Web Browser " DISPLAY_VERSION " (" OWB_BUILD_DATE ")",
         MUIA_Window_Title, DEFAULT_WINDOW_NAME,
         MUIA_Window_ID, MAKE_ID('O','W','B', id),
         MUIA_Window_Menustrip, menustrip = (Object *) MUI_MakeObject(MUIO_MenustripNM, MenuData, 0),
         MUIA_Window_AppWindow, TRUE,
         WindowContents, maingroup = VGroup,
             Child, navigationgroup     = VGroup,
-                                            Child, (Object *) NewObject(getnavigationgroupclass(), NULL, TAG_DONE),
+                                            Child, navChild,
                                             End,
 
             Child, fastlinkparentgroup = VGroup,
-                                            Child, (Object *) NewObject(getquicklinkparentgroupclass(), NULL,
-                                                                        MA_QuickLinkParentGroup_QLGroup,
-                                                                        fastlinkgroup = (Object *) NewObject(getquicklinkgroupclass(), NULL,
-                                                                                                             MA_QuickLinkGroup_Row, getv(app, MA_OWBApp_QuickLinkRows),
-                                                                                                             MA_QuickLinkGroup_Mode, getv(app, MA_OWBApp_QuickLinkLayout) | getv(app, MA_OWBApp_QuickLinkLook),
-                                                                                                             TAG_DONE),
-                                                                        TAG_DONE),
+                                            Child, quickLinkParentObj,
                                             End,
 
             Child, urlgroup = HGroup,
-                Child, addressbargroup = (Object *) NewObject(getaddressbargroupclass(), NULL,
-                                                              MA_AddressBarGroup_GoButton, getv(app, MA_OWBApp_ShowValidationButtons),
-                                                              TAG_DONE),
+                Child, addressbargroup,
                 Child, urlbalance      = BalanceObject, MUIA_ObjectID, MAKE_ID('O','U','B','A'),
                                                         MUIA_Balance_Quiet, TRUE,
                                                         End,
-                Child, searchgroup     = (Object *) NewObject(getsearchbargroupclass(), NULL,
-                                                              MA_SearchBarGroup_SearchButton, getv(app, MA_OWBApp_ShowValidationButtons),
-                                                              TAG_DONE),
+                Child, searchgroup,
                 End,
 
             Child, HGroup,
@@ -361,44 +439,25 @@ DEFNEW
                                         MUIA_Group_PageMode, TRUE,
                                         InnerSpacing(0, 0),
                                         GroupSpacing(0),
-                                        Child, pagetitles = (Object *) NewObject(gettitleclass(), NULL, TAG_DONE),
+                                        Child, pagetitles,
                                         End,
                 End,
 
-            Child, findgroup = (Object *) NewObject(getfindtextclass(), NULL,
-                                                    MUIA_ShowMe, FALSE,
-                                                    MA_FindText_ShowAllMatches, TRUE,
-                                                    MA_FindText_Closable, TRUE,
-                                                    TAG_DONE),
+            Child, findgroup,
 
             Child, statusgroup = HGroup,
 
-                    Child, zoneimage = (Object *) MUI_NewObject(MUIC_Dtpic,
-                                                                MUIA_Dtpic_Name, "PROGDIR:resource/zone_local.png",
-                                                                TAG_DONE),
-                    
+                    Child, zoneimage,
+
                     Child, MakeVBar(),
 
-                    Child, secureimage = (Object *) MUI_NewObject(MUIC_Dtpic,
-                                                                  MUIA_Dtpic_Alpha, 0,
-                                                                  MUIA_Dtpic_Name, "PROGDIR:resource/zone_notsecure.png",
-                                                                  TAG_DONE),
+                    Child, secureimage,
                     Child, MakeVBar(),
 
-                    Child, privatebrowsingimage = (Object *) MUI_NewObject(MUIC_Dtpic,
-                                                                  MUIA_Dtpic_Alpha, 0,
-#if !OS(AROS)
-                                                                  MUIA_Dtpic_Name, "PROGDIR:resource/private_browsing.png",
-#else
-                                                                  MUIA_Dtpic_Name, "PROGDIR:resource/private_browsing_a.png",
-#endif
-                                                                  TAG_DONE),
+                    Child, privatebrowsingimage,
                     Child, MakeVBar(),
 
-                    Child, userscriptimage = (Object *) MUI_NewObject(MUIC_Dtpic,
-                                                                  MUIA_Dtpic_Alpha, 0,
-                                                                  MUIA_Dtpic_Name, "PROGDIR:resource/scriptIcon.png",
-                                                                  TAG_DONE),
+                    Child, userscriptimage,
                     Child, MakeVBar(),
 
                     Child, statusbar = TextObject,
@@ -1487,9 +1546,17 @@ DEFSMETHOD(OWBWindow_LoadURL)
         }
 
         // Close history and restore its global state (a bit heavy to reload whole list...)
-        DoMethod((Object *) getv(data->addressbargroup, MA_AddressBarGroup_PopString), MUIM_Popstring_Close, FALSE);
+        /* Before the window is open its gadgets aren't set up yet; closing the
+         * never-opened history popup then blocks inside MUI. Nothing to close. */
+        if(getv(obj, MUIA_Window_Open))
+        {
+            DoMethod((Object *) getv(data->addressbargroup, MA_AddressBarGroup_PopString), MUIM_Popstring_Close, FALSE);
+        }
+        else
+        {
+        }
 
-        if(getv(app, MA_OWBApp_URLCompletionType) & MV_OWBApp_URLCompletionType_Popup)
+        if(getv(obj, MUIA_Window_Open) && (getv(app, MA_OWBApp_URLCompletionType) & MV_OWBApp_URLCompletionType_Popup))
         {
             DoMethod(data->addressbargroup, MM_AddressBarGroup_LoadHistory);
         }
@@ -2817,7 +2884,7 @@ DEFSMETHOD(Search)
 DEFSMETHOD(FindText_DisableButtons)
 {
     GETDATA;
-    return DoMethodA(data->findgroup, (_Msg_*) msg);
+    return DoMethodA(data->findgroup, (Msg)msg);
 }
 
 DEFTMETHOD(OWBWindow_InsertBookmark)

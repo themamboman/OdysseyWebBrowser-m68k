@@ -308,7 +308,7 @@ bool InputType::rangeOverflow(const String& value) const
 
 Decimal InputType::defaultValueForStepUp() const
 {
-    return 0;
+    return Decimal(static_cast<int32_t>(0));
 }
 
 double InputType::minimum() const
@@ -434,7 +434,7 @@ String InputType::validationMessage() const
         return validationMessageRangeOverflowText(serialize(stepRange.maximum()));
 
     if (stepRange.stepMismatch(numericValue)) {
-        const String stepString = stepRange.hasStep() ? serializeForNumberType(stepRange.step() / stepRange.stepScaleFactor()) : emptyString();
+        const String stepString = stepRange.hasStep() ? serializeForNumberType(stepRange.step() / Decimal(static_cast<int32_t>(stepRange.stepScaleFactor()))) : emptyString();
         return validationMessageStepMismatchText(serialize(stepRange.stepBase()), stepString);
     }
 
@@ -971,7 +971,7 @@ ExceptionOr<void> InputType::applyStep(int count, AnyStepHandling anyStepHandlin
     const Decimal current = parseToNumberOrNaN(element()->value());
     if (!current.isFinite())
         return Exception { InvalidStateError };
-    Decimal newValue = current + stepRange.step() * count;
+    Decimal newValue = current + stepRange.step() * Decimal(static_cast<int32_t>(count));
     if (!newValue.isFinite())
         return Exception { InvalidStateError };
 
@@ -1074,9 +1074,9 @@ void InputType::stepUpFromRenderer(int n)
     const Decimal step = stepRange.step();
 
     int sign;
-    if (step > 0)
+    if (step > Decimal(static_cast<int32_t>(0)))
         sign = n;
-    else if (step < 0)
+    else if (step < Decimal(static_cast<int32_t>(0)))
         sign = -n;
     else
         sign = 0;
@@ -1086,7 +1086,7 @@ void InputType::stepUpFromRenderer(int n)
     Decimal current = parseToNumberOrNaN(currentStringValue);
     if (!current.isFinite()) {
         current = defaultValueForStepUp();
-        const Decimal nextDiff = step * n;
+        const Decimal nextDiff = step * Decimal(static_cast<int32_t>(n));
         if (current < stepRange.minimum() - nextDiff)
             current = stepRange.minimum() - nextDiff;
         if (current > stepRange.maximum() - nextDiff)

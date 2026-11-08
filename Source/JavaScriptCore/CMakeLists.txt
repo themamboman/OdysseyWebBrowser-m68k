@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.5)
 include(WebKitCommon)
 set_property(DIRECTORY . PROPERTY FOLDER "JavaScriptCore")
 
@@ -56,6 +56,10 @@ endif ()
 set(JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
     "${ICU_INCLUDE_DIRS}"
 )
+
+if (WEBKIT_TARGET_AMIGAOS3)
+    list(APPEND JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES "${WEBKIT_AMIGA_MULTITASK_LIBRARY_ROOT}")
+endif ()
 
 set(JavaScriptCore_OBJECT_LUT_SOURCES
     runtime/ArrayConstructor.cpp
@@ -228,6 +232,8 @@ add_custom_command(
     COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/generator/main.rb --bytecodes_h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h --init_bytecodes_asm ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InitBytecodes.asm --bytecode_structs_h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h --bytecode_indices_h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeIndices.h ${JAVASCRIPTCORE_DIR}/bytecode/BytecodeList.rb
     VERBATIM)
 
+add_custom_target(JavaScriptCoreGeneratedSources DEPENDS ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InitBytecodes.asm ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeIndices.h)
+
 
 if (WTF_OS_MAC_OS_X)
     execute_process(COMMAND bash -c "date +'%s'" OUTPUT_VARIABLE BUILD_TIME OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -272,12 +278,17 @@ add_custom_command(
     COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/offlineasm/generate_settings_extractor.rb -I${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/ ${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.asm ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredSettings.h ${OFFLINE_ASM_BACKEND}
     VERBATIM)
 
+add_custom_target(LLIntDesiredSettings DEPENDS ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredSettings.h)
+
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h
     MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/offlineasm/generate_offset_extractor.rb
     DEPENDS LLIntSettingsExtractor ${LLINT_ASM} ${OFFLINE_ASM} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InitBytecodes.asm
-    COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/offlineasm/generate_offset_extractor.rb -I${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/ ${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.asm $<TARGET_FILE:LLIntSettingsExtractor> ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h ${OFFLINE_ASM_BACKEND}
+    COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/offlineasm/generate_offset_extractor.rb -I${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/ ${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.asm ${CMAKE_CURRENT_BINARY_DIR}/bin/LLIntSettingsExtractor ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h ${OFFLINE_ASM_BACKEND}
     VERBATIM)
+
+add_custom_target(LLIntDesiredOffsets DEPENDS ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h)
+add_dependencies(LLIntDesiredOffsets LLIntSettingsExtractor)
 
 # We add the header files directly to the ADD_EXECUTABLE call instead of setting the
 # OBJECT_DEPENDS property in LLIntOffsetsExtractor.cpp because generate_offset_extractor.rb and
@@ -288,20 +299,115 @@ add_custom_command(
 # Additionally, setting the OBJECT_DEPENDS property will make the .h files a Makefile
 # dependency of both LLIntOffsetsExtractor and LLIntOffsetsExtractor.cpp, so the command will
 # actually be run multiple times!
-add_executable(LLIntSettingsExtractor
-    ${JAVASCRIPTCORE_DIR}/llint/LLIntSettingsExtractor.cpp
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredSettings.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h
-)
 
-add_executable(LLIntOffsetsExtractor
-    ${JAVASCRIPTCORE_DIR}/llint/LLIntOffsetsExtractor.cpp
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h
-)
+if (WEBKIT_TARGET_AMIGAOS3)
+    # LLIntSettingsExtractor and LLIntOffsetsExtractor are never executed -- asm.rb and
+    # generate_offset_extractor.rb statically scan the compiled binary's bytes for magic-number
+    # markers to recover sizeof/offsetof/constexpr values (see offlineasm/offsets.rb). Those values
+    # must therefore reflect the REAL target (m68k, 32-bit pointers, JSVALUE32_64), not the host.
+    # Previously these were built with the host g++ (still passing the -D__AMIGAOS3__ etc. flags
+    # below, which select the Amiga code paths in WTF/JSC headers). That selected the right source
+    # branches but didn't change the compiler's actual pointer width: WTF_CPU_ADDRESS64 in
+    # Platform.h is derived from the compiler's real __SIZEOF_POINTER__, which is 8 on host g++
+    # regardless of these defines. So the host-built extractors silently produced 64-bit/JSVALUE64
+    # offsets and constants (e.g. PtrSize resolved to 8/16 garbage instead of the correct 4), which
+    # is what made offlineasm's C_LOOP lowering fail resolving BaseIndex scales. Building with the
+    # real m68k cross-compiler (same compiler as the rest of this target) fixes this.
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/bin/LLIntSettingsExtractor
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/bin
+        COMMAND ${CMAKE_CXX_COMPILER} -std=c++14 -O1 -g -DNDEBUG -DAMIGA -D__AMIGAOS3__ -D__M68K__ -D__REGISTERS__ -D__SASC__ -DBUILDING_WITH_CMAKE=1 -DHAVE_CONFIG_H=1 -DUSER_AGENT_GTK_MAJOR_VERSION=601 -DUSER_AGENT_GTK_MINOR_VERSION=1 -mcpu=68040 -fbaserel -fno-strict-aliasing -fno-exceptions -fno-rtti
+            -I${WTF_DIR}/icu
+            -I${CMAKE_BINARY_DIR}
+            -I${CMAKE_SOURCE_DIR}/Source
+            -I${CMAKE_SOURCE_DIR}/Source/WTF
+            -I${CMAKE_BINARY_DIR}/DerivedSources/ForwardingHeaders
+            -I${CMAKE_SOURCE_DIR}/amiga/stubs
+            -I${WEBKIT_AMIGA_MULTITASK_LIBRARY_ROOT}
+            -I${DERIVED_SOURCES_JAVASCRIPTCORE_DIR} -I${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/ForwardingHeaders
+            -I${JAVASCRIPTCORE_DIR} -I${JAVASCRIPTCORE_DIR}/API -I${JAVASCRIPTCORE_DIR}/assembler -I${JAVASCRIPTCORE_DIR}/b3 -I${JAVASCRIPTCORE_DIR}/b3/air
+            -I${JAVASCRIPTCORE_DIR}/bindings -I${JAVASCRIPTCORE_DIR}/builtins -I${JAVASCRIPTCORE_DIR}/bytecode
+            -I${JAVASCRIPTCORE_DIR}/bytecompiler -I${JAVASCRIPTCORE_DIR}/dfg -I${JAVASCRIPTCORE_DIR}/disassembler
+            -I${JAVASCRIPTCORE_DIR}/disassembler/ARM64 -I${JAVASCRIPTCORE_DIR}/disassembler/udis86
+            -I${JAVASCRIPTCORE_DIR}/domjit -I${JAVASCRIPTCORE_DIR}/ftl -I${JAVASCRIPTCORE_DIR}/heap
+            -I${JAVASCRIPTCORE_DIR}/debugger -I${JAVASCRIPTCORE_DIR}/inspector -I${JAVASCRIPTCORE_DIR}/inspector/agents
+            -I${JAVASCRIPTCORE_DIR}/inspector/augmentable -I${JAVASCRIPTCORE_DIR}/inspector/remote
+            -I${JAVASCRIPTCORE_DIR}/interpreter -I${JAVASCRIPTCORE_DIR}/jit -I${JAVASCRIPTCORE_DIR}/llint
+            -I${JAVASCRIPTCORE_DIR}/parser -I${JAVASCRIPTCORE_DIR}/profiler -I${JAVASCRIPTCORE_DIR}/runtime
+            -I${JAVASCRIPTCORE_DIR}/tools -I${JAVASCRIPTCORE_DIR}/wasm -I${JAVASCRIPTCORE_DIR}/wasm/js
+            -I${JAVASCRIPTCORE_DIR}/yarr -I${CMAKE_SOURCE_DIR}/Source/bmalloc -I${CMAKE_SOURCE_DIR}/Source/ThirdParty
+            -I${CMAKE_SOURCE_DIR}/Source/WTF/icu
+            -c ${JAVASCRIPTCORE_DIR}/llint/LLIntSettingsExtractor.cpp
+            -o ${CMAKE_CURRENT_BINARY_DIR}/LLIntSettingsExtractor.cpp.obj
+        COMMAND ${CMAKE_CXX_COMPILER} -mcpu=68040 -fbaserel -Wl,--allow-multiple-definition -o ${CMAKE_CURRENT_BINARY_DIR}/bin/LLIntSettingsExtractor
+            ${CMAKE_CURRENT_BINARY_DIR}/LLIntSettingsExtractor.cpp.obj
+        DEPENDS ${JAVASCRIPTCORE_DIR}/llint/LLIntSettingsExtractor.cpp
+            ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredSettings.h
+            ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h
+            ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Building LLIntSettingsExtractor with the m68k cross-compiler (never executed, only byte-scanned)"
+        VERBATIM)
 
-target_link_libraries(LLIntSettingsExtractor WTF)
-add_dependencies(LLIntSettingsExtractor JavaScriptCoreForwardingHeaders)
-target_link_libraries(LLIntOffsetsExtractor WTF)
-add_dependencies(LLIntOffsetsExtractor JavaScriptCoreForwardingHeaders)
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/bin/LLIntOffsetsExtractor
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/bin
+        COMMAND ${CMAKE_CXX_COMPILER} -std=c++14 -O1 -g -DNDEBUG -DAMIGA -D__AMIGAOS3__ -D__M68K__ -D__REGISTERS__ -D__SASC__ -DBUILDING_WITH_CMAKE=1 -DHAVE_CONFIG_H=1 -DUSER_AGENT_GTK_MAJOR_VERSION=601 -DUSER_AGENT_GTK_MINOR_VERSION=1 -mcpu=68040 -fbaserel -fno-strict-aliasing -fno-exceptions -fno-rtti
+            -I${WTF_DIR}/icu
+            -I${CMAKE_BINARY_DIR}
+            -I${CMAKE_SOURCE_DIR}/Source
+            -I${CMAKE_SOURCE_DIR}/Source/WTF
+            -I${CMAKE_BINARY_DIR}/DerivedSources/ForwardingHeaders
+            -I${CMAKE_SOURCE_DIR}/amiga/stubs
+            -I${WEBKIT_AMIGA_MULTITASK_LIBRARY_ROOT}
+            -I${DERIVED_SOURCES_JAVASCRIPTCORE_DIR} -I${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/ForwardingHeaders
+            -I${JAVASCRIPTCORE_DIR} -I${JAVASCRIPTCORE_DIR}/API -I${JAVASCRIPTCORE_DIR}/assembler -I${JAVASCRIPTCORE_DIR}/b3 -I${JAVASCRIPTCORE_DIR}/b3/air
+            -I${JAVASCRIPTCORE_DIR}/bindings -I${JAVASCRIPTCORE_DIR}/builtins -I${JAVASCRIPTCORE_DIR}/bytecode
+            -I${JAVASCRIPTCORE_DIR}/bytecompiler -I${JAVASCRIPTCORE_DIR}/dfg -I${JAVASCRIPTCORE_DIR}/disassembler
+            -I${JAVASCRIPTCORE_DIR}/disassembler/ARM64 -I${JAVASCRIPTCORE_DIR}/disassembler/udis86
+            -I${JAVASCRIPTCORE_DIR}/domjit -I${JAVASCRIPTCORE_DIR}/ftl -I${JAVASCRIPTCORE_DIR}/heap
+            -I${JAVASCRIPTCORE_DIR}/debugger -I${JAVASCRIPTCORE_DIR}/inspector -I${JAVASCRIPTCORE_DIR}/inspector/agents
+            -I${JAVASCRIPTCORE_DIR}/inspector/augmentable -I${JAVASCRIPTCORE_DIR}/inspector/remote
+            -I${JAVASCRIPTCORE_DIR}/interpreter -I${JAVASCRIPTCORE_DIR}/jit -I${JAVASCRIPTCORE_DIR}/llint
+            -I${JAVASCRIPTCORE_DIR}/parser -I${JAVASCRIPTCORE_DIR}/profiler -I${JAVASCRIPTCORE_DIR}/runtime
+            -I${JAVASCRIPTCORE_DIR}/tools -I${JAVASCRIPTCORE_DIR}/wasm -I${JAVASCRIPTCORE_DIR}/wasm/js
+            -I${JAVASCRIPTCORE_DIR}/yarr -I${CMAKE_SOURCE_DIR}/Source/bmalloc -I${CMAKE_SOURCE_DIR}/Source/ThirdParty
+            -I${CMAKE_SOURCE_DIR}/Source/WTF/icu
+            -c ${JAVASCRIPTCORE_DIR}/llint/LLIntOffsetsExtractor.cpp
+            -o ${CMAKE_CURRENT_BINARY_DIR}/LLIntOffsetsExtractor.cpp.obj
+        COMMAND ${CMAKE_CXX_COMPILER} -mcpu=68040 -fbaserel -Wl,--allow-multiple-definition -o ${CMAKE_CURRENT_BINARY_DIR}/bin/LLIntOffsetsExtractor
+            ${CMAKE_CURRENT_BINARY_DIR}/LLIntOffsetsExtractor.cpp.obj
+        DEPENDS ${JAVASCRIPTCORE_DIR}/llint/LLIntOffsetsExtractor.cpp
+            ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h
+            ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h
+            ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Building LLIntOffsetsExtractor with the m68k cross-compiler (never executed, only byte-scanned)"
+        VERBATIM)
+
+    add_custom_target(LLIntSettingsExtractor DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/bin/LLIntSettingsExtractor)
+    add_custom_target(LLIntOffsetsExtractor DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/bin/LLIntOffsetsExtractor)
+    add_dependencies(LLIntSettingsExtractor JavaScriptCoreForwardingHeaders)
+    add_dependencies(LLIntSettingsExtractor LLIntDesiredSettings)
+    add_dependencies(LLIntOffsetsExtractor JavaScriptCoreForwardingHeaders)
+    add_dependencies(LLIntOffsetsExtractor JavaScriptCoreGeneratedSources)
+    add_dependencies(LLIntOffsetsExtractor LLIntDesiredOffsets)
+else()
+    add_executable(LLIntSettingsExtractor
+        ${JAVASCRIPTCORE_DIR}/llint/LLIntSettingsExtractor.cpp
+        ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredSettings.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h
+    )
+
+    add_executable(LLIntOffsetsExtractor
+        ${JAVASCRIPTCORE_DIR}/llint/LLIntOffsetsExtractor.cpp
+        ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h
+    )
+
+    target_link_libraries(LLIntSettingsExtractor WTF)
+    add_dependencies(LLIntSettingsExtractor JavaScriptCoreForwardingHeaders)
+    target_link_libraries(LLIntOffsetsExtractor WTF)
+    add_dependencies(LLIntOffsetsExtractor JavaScriptCoreForwardingHeaders)
+endif()
 
 # The build system will execute asm.rb every time LLIntOffsetsExtractor's mtime is newer than
 # LLIntAssembly.h's mtime. The problem we have here is: asm.rb has some built-in optimization
@@ -314,13 +420,14 @@ if (MSVC AND NOT ENABLE_C_LOOP)
     set(OFFLINE_ASM_ARGS --assembler=MASM)
 else ()
     set(LLIntOutput LLIntAssembly.h)
+    set(OFFLINE_ASM_ARGS --backend=${OFFLINE_ASM_BACKEND})
 endif ()
 
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/${LLIntOutput}
     MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/offlineasm/asm.rb
-    DEPENDS LLIntOffsetsExtractor ${LLINT_ASM} ${OFFLINE_ASM} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InitBytecodes.asm
-    COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/offlineasm/asm.rb -I${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/ ${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.asm $<TARGET_FILE:LLIntOffsetsExtractor> ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/${LLIntOutput} ${OFFLINE_ASM_ARGS}
+    DEPENDS LLIntOffsetsExtractor ${LLINT_ASM} ${OFFLINE_ASM} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InitBytecodes.asm JavaScriptCoreGeneratedSources
+    COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/offlineasm/asm.rb -I${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/ ${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.asm ${CMAKE_CURRENT_BINARY_DIR}/bin/LLIntOffsetsExtractor ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/${LLIntOutput} ${OFFLINE_ASM_ARGS}
     COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/${LLIntOutput}
     WORKING_DIRECTORY ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
     VERBATIM)
@@ -1267,6 +1374,15 @@ if (COMPILER_IS_GCC_OR_CLANG)
     set_source_files_properties(builtins/BuiltinNames.cpp PROPERTIES COMPILE_FLAGS -fno-var-tracking-assignments)
 endif ()
 
+if (WEBKIT_TARGET_AMIGAOS3)
+    # m68k-amigaos-gcc ICEs ("output_operand: invalid expression as operand") in the RTL
+    # final pass at -O1 on CLoop::execute() -- the giant generated LLInt dispatch function in
+    # LowLevelInterpreter.cpp. -Og avoids the buggy pass while still optimizing (-O0 also avoids
+    # it, but -Og keeps this hot interpreter loop from being needlessly slow). Scoped to this one
+    # file; the rest of JavaScriptCore keeps its normal optimization level.
+    set_source_files_properties(llint/LowLevelInterpreter.cpp PROPERTIES COMPILE_FLAGS "-Og")
+endif ()
+
 WEBKIT_MAKE_FORWARDING_HEADERS(JavaScriptCore
     FILES ${JavaScriptCore_PUBLIC_FRAMEWORK_HEADERS}
     FLATTENED
@@ -1278,18 +1394,6 @@ WEBKIT_MAKE_FORWARDING_HEADERS(JavaScriptCore
     DERIVED_SOURCE_DIRECTORIES ${DERIVED_SOURCES_DIR}/JavaScriptCore ${DERIVED_SOURCES_DIR}/JavaScriptCore/inspector
     FLATTENED
 )
-
-target_include_directories(LLIntSettingsExtractor PRIVATE
-    ${JavaScriptCore_INCLUDE_DIRECTORIES}
-    ${JavaScriptCore_PRIVATE_INCLUDE_DIRECTORIES}
-)
-target_include_directories(LLIntSettingsExtractor SYSTEM PRIVATE ${JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES})
-
-target_include_directories(LLIntOffsetsExtractor PRIVATE
-    ${JavaScriptCore_INCLUDE_DIRECTORIES}
-    ${JavaScriptCore_PRIVATE_INCLUDE_DIRECTORIES}
-)
-target_include_directories(LLIntOffsetsExtractor SYSTEM PRIVATE ${JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES})
 
 if (${PORT} STREQUAL "MUI")
 else ()

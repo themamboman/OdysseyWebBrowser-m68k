@@ -103,7 +103,10 @@ DEFSMETHOD(ConsoleWindow_Add)
         GETDATA;
         struct timeval timeval;
 
-        GetSysTime(&timeval);
+        if (TimerBase)
+            GetSysTime(&timeval);
+        else
+            timeval.tv_secs = timeval.tv_micro = 0;
         Amiga2Date(timeval.tv_secs, &e->clockdata);
 
         stccpy(e->message, msg->message, sizeof(e->message));

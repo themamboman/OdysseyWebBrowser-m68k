@@ -23,6 +23,7 @@
 
 #include "CSSValueKeywords.h"
 #include "Frame.h"
+#include "HTMLInputElement.h"
 #include "HTMLMediaElement.h"
 #include "HostWindow.h"
 #include "InputType.h"

@@ -113,6 +113,8 @@ TryMallocReturnValue tryFastZeroedMalloc(size_t n)
 #elif OS(AROS)
 #include "mui/arosbailout.h"
 #include "mui/execallocator.h"
+#elif OS(AMIGA)
+#include <malloc.h>
 #elif OS(MORPHOS)
 #include <clib/debug_protos.h>
 #endif
@@ -157,13 +159,50 @@ void fastAlignedFree(void* p)
 
 #else
 
-void* fastAlignedMalloc(size_t alignment, size_t size) 
+#if defined(__AMIGAOS3__)
+/* memalign() is unusable on this toolchain: lib_a-malign.o's memalign()
+ * calls through to a reentrant __memalign_r() that no C library variant
+ * in this sysroot actually defines (confirmed via nm across every libb/
+ * libnix/clib2/ixemul flavor -- see WebCore_status.md). Rather than reuse
+ * plain free() (which can't handle an adjusted-for-alignment pointer, the
+ * same reason OS(WINDOWS) above uses its own paired _aligned_malloc/
+ * _aligned_free instead of malloc/free), implement a small self-contained
+ * aligned allocator: over-allocate via plain malloc, round up to the
+ * requested alignment, and stash the real malloc() pointer just before the
+ * aligned pointer so fastAlignedFree can recover and free it correctly. */
+static void* amigaAlignedMalloc(size_t alignment, size_t size)
+{
+    if (alignment < sizeof(void*))
+        alignment = sizeof(void*);
+    size_t total = size + alignment - 1 + sizeof(void*);
+    void* raw = malloc(total);
+    if (!raw)
+        return nullptr;
+    uintptr_t rawAddr = reinterpret_cast<uintptr_t>(raw) + sizeof(void*);
+    uintptr_t aligned = (rawAddr + alignment - 1) & ~(static_cast<uintptr_t>(alignment) - 1);
+    reinterpret_cast<void**>(aligned)[-1] = raw;
+    return reinterpret_cast<void*>(aligned);
+}
+
+static void amigaAlignedFree(void* p)
+{
+    if (!p)
+        return;
+    free(reinterpret_cast<void**>(p)[-1]);
+}
+#endif
+
+void* fastAlignedMalloc(size_t alignment, size_t size)
 {
     ASSERT_IS_WITHIN_LIMIT(size);
 retry:
     void* p = nullptr;
 #if OS(AROS)
     p = allocator_getmem_aligned(size, alignment);
+#elif defined(__AMIGAOS3__)
+    p = amigaAlignedMalloc(alignment, size ? size : 2);
+#elif OS(AMIGA)
+    p = memalign(alignment, size ? size : 2);
 #else
     posix_memalign(&p, alignment, size ? size : 2);
 #endif
@@ -187,22 +226,28 @@ retry:
     return p;
 }
 
-void* tryFastAlignedMalloc(size_t alignment, size_t size) 
+void* tryFastAlignedMalloc(size_t alignment, size_t size)
 {
     FAIL_IF_EXCEEDS_LIMIT(size);
     void* p = nullptr;
 #if OS(AROS)
     p = allocator_getmem_aligned(size, alignment);
+#elif defined(__AMIGAOS3__)
+    p = amigaAlignedMalloc(alignment, size);
+#elif OS(AMIGA)
+    p = memalign(alignment, size);
 #else
     posix_memalign(&p, alignment, size);
 #endif
     return p;
 }
 
-void fastAlignedFree(void* p) 
+void fastAlignedFree(void* p)
 {
 #if OS(AROS)
     allocator_freemem(p);
+#elif defined(__AMIGAOS3__)
+    amigaAlignedFree(p);
 #else
     free(p);
 #endif

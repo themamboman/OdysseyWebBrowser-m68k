@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #if !OS(DARWIN) && !OS(FUCHSIA) && OS(UNIX)
 #include <errno.h>
@@ -50,6 +51,15 @@
 #include <zircon/syscalls.h>
 #endif
 
+#if OS(AMIGA)
+extern "C" int RAND_bytes(unsigned char*, int);
+/* AmiSSL library bases are per task, and the curl thread swaps its own bases
+   into the global AmiSSLBase. WebCore installs this hook to serialise AmiSSL
+   use and give other tasks their own bases (see CurlRequestScheduler.cpp).
+   Called with 1 before and 0 after using AmiSSL. */
+extern "C" { void (*owbAmiSSLUseHook)(int begin) = nullptr; }
+#endif
+
 namespace WTF {
 
 #if !OS(DARWIN) && !OS(FUCHSIA) && OS(UNIX)
@@ -64,7 +74,7 @@ NEVER_INLINE NO_RETURN_DUE_TO_CRASH static void crashUnableToReadFromURandom()
 }
 #endif
 
-#if !OS(DARWIN) && !OS(FUCHSIA) && !OS(WINDOWS) && !OS(AROS)
+#if !OS(DARWIN) && !OS(FUCHSIA) && !OS(WINDOWS) && !OS(AROS) && !OS(AMIGA)
 RandomDevice::RandomDevice()
 {
     int ret = 0;
@@ -86,7 +96,7 @@ RandomDevice::~RandomDevice()
 }
 #endif
 
-#if !OS(DARWIN) && !OS(FUCHSIA) && !OS(WINDOWS) && !OS(AROS)
+#if !OS(DARWIN) && !OS(FUCHSIA) && !OS(WINDOWS) && !OS(AROS) && !OS(AMIGA)
 RandomDevice::~RandomDevice()
 {
     close(m_fd);
@@ -123,6 +133,17 @@ void RandomDevice::cryptographicallyRandomValues(unsigned char* buffer, size_t l
         CRASH();
     CryptReleaseContext(hCryptProv, 0);
 #elif OS(AROS)
+#elif OS(AMIGA)
+    if (owbAmiSSLUseHook)
+        owbAmiSSLUseHook(1);
+    while (length) {
+        int amount = length > INT_MAX ? INT_MAX : static_cast<int>(length);
+        RELEASE_ASSERT(RAND_bytes(buffer, amount) == 1);
+        buffer += amount;
+        length -= amount;
+    }
+    if (owbAmiSSLUseHook)
+        owbAmiSSLUseHook(0);
 #else
 #error "This configuration doesn't have a strong source of randomness."
 // WARNING: When adding new sources of OS randomness, the randomness must

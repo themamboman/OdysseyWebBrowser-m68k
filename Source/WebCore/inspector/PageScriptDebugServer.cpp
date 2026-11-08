@@ -25,6 +25,8 @@
  */
 
 #include "config.h"
+
+#include <cstdio>
 #include "PageScriptDebugServer.h"
 
 #include "CommonVM.h"
@@ -55,7 +57,7 @@ using namespace JSC;
 using namespace Inspector;
 
 PageScriptDebugServer::PageScriptDebugServer(Page& page)
-    : ScriptDebugServer(WebCore::commonVM())
+    : ScriptDebugServer((WebCore::commonVM()))
     , m_page(page)
 {
 }

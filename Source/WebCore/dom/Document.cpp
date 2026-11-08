@@ -26,6 +26,7 @@
  */
 
 #include "config.h"
+#include <stdio.h>
 #include "Document.h"
 
 #include "AXObjectCache.h"

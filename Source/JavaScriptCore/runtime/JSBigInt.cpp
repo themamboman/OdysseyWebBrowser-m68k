@@ -1411,7 +1411,7 @@ JSBigInt* JSBigInt::rightShiftByAbsolute(ExecState* exec, JSBigInt* x, JSBigInt*
 JSBigInt* JSBigInt::rightShiftByMaximum(VM& vm, bool sign)
 {
     if (sign)
-        return createFrom(vm, -1);
+        return createFrom(vm, static_cast<int32_t>(-1));
 
     return createZero(vm);
 }

@@ -291,7 +291,7 @@ void SliderThumbElement::setPositionFromPoint(const LayoutPoint& absolutePoint)
 
     position = std::max<LayoutUnit>(0, std::min(position, trackLength));
     auto ratio = Decimal::fromDouble(static_cast<double>(position) / trackLength);
-    auto fraction = isVertical || !isLeftToRightDirection ? Decimal(1) - ratio : ratio;
+    auto fraction = isVertical || !isLeftToRightDirection ? Decimal(static_cast<int32_t>(1)) - ratio : ratio;
     auto stepRange = input->createStepRange(RejectAny);
     auto value = stepRange.clampValue(stepRange.valueFromProportion(fraction));
 

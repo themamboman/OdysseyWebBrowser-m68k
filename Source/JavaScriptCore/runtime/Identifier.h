@@ -132,9 +132,19 @@ public:
 
     JS_EXPORT_PRIVATE static Identifier from(ExecState*, unsigned y);
     JS_EXPORT_PRIVATE static Identifier from(ExecState*, int y);
+#if defined(__M68K__)
+    JS_EXPORT_PRIVATE static Identifier from(ExecState*, uint32_t y);
+#else
+    JS_EXPORT_PRIVATE static Identifier from(ExecState*, uint32_t y);
+#endif
     static Identifier from(ExecState*, double y);
     static Identifier from(VM*, unsigned y);
     static Identifier from(VM*, int y);
+#if defined(__M68K__)
+    static Identifier from(VM*, uint32_t y);
+#else
+    static Identifier from(VM*, uint32_t y);
+#endif
     static Identifier from(VM*, double y);
 
     bool isNull() const { return m_string.isNull(); }

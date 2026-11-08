@@ -63,7 +63,15 @@ namespace WebCore {
 struct SameSizeAsBorderValue {
     Color m_color;
     float m_width;
+#if CPU(M68K)
+    // m68k GCC packs a bitfield into the smallest storage unit that fits its total bit width
+    // (here 5 bits -> 16 bits) rather than reserving a full 4-byte unit for the declared
+    // `unsigned` base type the way x86/ARM do, so BorderValue's real trailing bitfields take
+    // 2 bytes here, not 4.
+    uint16_t m_restBits;
+#else
     int m_restBits;
+#endif
 };
 
 COMPILE_ASSERT(sizeof(BorderValue) == sizeof(SameSizeAsBorderValue), BorderValue_should_not_grow);
@@ -73,7 +81,16 @@ struct SameSizeAsRenderStyle {
     void* ownPtrs[1];
     void* dataRefSvgStyle;
     struct InheritedFlags {
+#if CPU(M68K)
+        // InheritedFlags' real bitfields total exactly 48 bits (32 + 16, see the "48 bits"
+        // comment in RenderStyle.h). m68k GCC allocates each bitfield storage unit sized to
+        // just the bits remaining, so the trailing 16 bits take a 2-byte unit here, not a full
+        // 4-byte `unsigned` the way x86/ARM would -- 6 bytes total instead of 8.
+        unsigned m_bitfieldsFull;
+        uint16_t m_bitfieldsShort;
+#else
         unsigned m_bitfields[2];
+#endif
     } m_inheritedFlags;
 
     struct NonInheritedFlags {

@@ -153,7 +153,7 @@ ALWAYS_INLINE void JSStringJoiner::append(ExecState& state, JSValue value)
 
 ALWAYS_INLINE void JSStringJoiner::appendNumber(VM& vm, int32_t value)
 {
-    append8Bit(vm.numericStrings.add(value));
+    append8Bit(vm.numericStrings.add(static_cast<int>(value)));
 }
 
 ALWAYS_INLINE void JSStringJoiner::appendNumber(VM& vm, double value)

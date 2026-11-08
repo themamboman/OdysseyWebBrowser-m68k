@@ -44,6 +44,7 @@
 #include <proto/cybergraphics.h>
 #include <proto/utility.h>
 #include <clib/debug_protos.h>
+#include <rtg_compat.h> /* classic-CyberGraphX WritePixelArrayAlpha() emulation, see header */
 
 #include "gui.h"
 

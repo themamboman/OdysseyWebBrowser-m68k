@@ -25,6 +25,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #if OS(UNIX)
 #include <unistd.h>
 #endif
@@ -41,6 +43,8 @@ namespace WTF {
 
 #if OS(WINDOWS)
 using ProcessID = int;
+#elif OS(AMIGA)
+using ProcessID = uintptr_t;
 #else
 using ProcessID = pid_t;
 #endif
@@ -49,6 +53,8 @@ inline ProcessID getCurrentProcessID()
 {
 #if OS(WINDOWS)
     return GetCurrentProcessId();
+#elif OS(AMIGA)
+    return reinterpret_cast<ProcessID>(FindTask(NULL));
 #elif PLATFORM(MUI)
     // FIXME: wrong for 64-bits
     return (int) (IPTR) FindTask(NULL);

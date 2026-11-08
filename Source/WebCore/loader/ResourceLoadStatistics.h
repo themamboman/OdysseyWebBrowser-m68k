@@ -92,9 +92,9 @@ struct ResourceLoadStatistics {
     // Prevalent resource stats
     bool isPrevalentResource { false };
     bool isVeryPrevalentResource { false };
-    unsigned dataRecordsRemoved { 0 };
-    unsigned timesAccessedAsFirstPartyDueToUserInteraction { 0 };
-    unsigned timesAccessedAsFirstPartyDueToStorageAccessAPI { 0 };
+    uint32_t dataRecordsRemoved { 0 };
+    uint32_t timesAccessedAsFirstPartyDueToUserInteraction { 0 };
+    uint32_t timesAccessedAsFirstPartyDueToStorageAccessAPI { 0 };
 
     enum class NavigatorAPI : uint64_t {
         AppVersion = 1 << 0,

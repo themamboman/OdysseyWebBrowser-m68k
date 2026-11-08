@@ -252,6 +252,17 @@ JSValue CLoop::execute(OpcodeID entryOpcodeID, void* executableAddress, VM* vm, 
         Opcode* opcodeMapWide = LLInt::opcodeMapWide();
 
 #if ENABLE(COMPUTED_GOTO_OPCODES)
+        // Force definition of all opcode labels before we take their addresses.
+        // This works around GCC's limitation where labels defined in a nested
+        // block cannot be referenced via &&label from an outer block.
+        #define FORCE_LABEL_DEFINITION(__opcode, length) \
+            USE_LABEL(__opcode); \
+            USE_LABEL(__opcode##_wide);
+        FOR_EACH_BYTECODE_ID(FORCE_LABEL_DEFINITION)
+        FOR_EACH_CLOOP_BYTECODE_HELPER_ID(FORCE_LABEL_DEFINITION)
+        FOR_EACH_LLINT_NATIVE_HELPER(FORCE_LABEL_DEFINITION)
+        #undef FORCE_LABEL_DEFINITION
+
         #define OPCODE_ENTRY(__opcode, length) \
             opcodeMap[__opcode] = bitwise_cast<void*>(&&__opcode); \
             opcodeMapWide[__opcode] = bitwise_cast<void*>(&&__opcode##_wide);
@@ -421,8 +432,6 @@ JSValue CLoop::execute(OpcodeID entryOpcodeID, void* executableAddress, VM* vm, 
     dispatchOpcode:
     switch (static_cast<unsigned>(opcode))
 
-#endif // !ENABLE(COMPUTED_GOTO_OPCODES)
-
     //========================================================================
     // Bytecode handlers:
     {
@@ -468,6 +477,7 @@ JSValue CLoop::execute(OpcodeID entryOpcodeID, void* executableAddress, VM* vm, 
 #endif
 
     } // END bytecode handler cases.
+#endif // !ENABLE(COMPUTED_GOTO_OPCODES)
 
 #if ENABLE(COMPUTED_GOTO_OPCODES)
     // Keep the compiler happy so that it doesn't complain about unused

@@ -1,0 +1,62 @@
+--- a/meson.build
++++ b/meson.build
+@@ -68,7 +68,9 @@
+     '-fno-common'
+   ]
+ 
+-  if get_option('optimization') in ['1', '2', '3']
++  # NOTE: -D_FORTIFY_SOURCE=2 intentionally omitted for the m68k-amigaos
++  # cross build: the toolchain's ssp headers do not compile with this GCC.
++  if false and get_option('optimization') in ['1', '2', '3']
+     cflags += '-Wp,-D_FORTIFY_SOURCE=2'
+   endif
+ 
+@@ -582,9 +584,14 @@
+   }]
+ endif
+ 
+-if zlib_dep.found()
+-  conf.set('CAIRO_HAS_INTERPRETER', 1)
+-endif
++# CAIRO_HAS_INTERPRETER pulls in util/cairo-script (libcairo-script-interpreter,
++# a separate archive WebKit never links against) which needs liblzo2, not
++# available/needed in this cross toolchain. Decoupled from zlib_dep so
++# enabling zlib (for the PDF/PS backends WebKit *does* use) doesn't also
++# require lzo. See WebCore_status.md.
++#if zlib_dep.found()
++#  conf.set('CAIRO_HAS_INTERPRETER', 1)
++#endif
+ 
+ bfd_dep = cc.find_library('bfd', has_headers: ['bfd.h'], required: get_option('symbol-lookup'))
+ if bfd_dep.found() and \
+--- a/src/cairo-png.c
++++ b/src/cairo-png.c
+@@ -37,6 +37,8 @@
+  */
+ 
+ #include "cairoint.h"
++
++#include <stdio.h>
+ 
+ #include "cairo-error-private.h"
+ #include "cairo-image-surface-private.h"
+--- a/src/cairo-ps-surface.c
++++ b/src/cairo-ps-surface.c
+@@ -102,6 +102,17 @@
+ #define DEBUG_FALLBACK(s)
+ #endif
+ 
++/* m68k-amigaos-gcc's clib2 time.h already declares a real, non-static
++ * ctime_r(const time_t*, char*) -- confirmed directly in that header.
++ * Meson's cross-compile feature probe apparently couldn't confirm it, so
++ * this fallback (meant for targets that really lack it) collided with the
++ * genuine declaration ("static declaration ... follows non-static
++ * declaration"). Force HAVE_CTIME_R so the #ifndef below correctly skips
++ * the fallback, rather than touching the shared m68k-amigaos-meson.ini
++ * cross file other libraries' builds also use. */
++#ifndef HAVE_CTIME_R
++#define HAVE_CTIME_R 1
++#endif
+ #ifndef HAVE_CTIME_R
+ static char *ctime_r(const time_t *timep, char *buf)
+ {

@@ -157,6 +157,13 @@ public:
 
     JSValue get(ExecState*, PropertyName) const;
     JSValue get(ExecState*, unsigned propertyName) const;
+    // On M68K, uint32_t and unsigned are distinct types (both long-width, but typedef'd from
+    // different builtins), so a second overload taking uint32_t would make any call passing a
+    // plain int/unsigned-but-not-exact-type argument ambiguous between the two. Callers that
+    // pass a uint32_t fall back to the unsigned overload via implicit conversion instead.
+#if !defined(__M68K__)
+    JSValue get(ExecState*, uint32_t propertyName) const;
+#endif
 
     template<bool checkNullStructure = false>
     bool getPropertySlot(ExecState*, PropertyName, PropertySlot&);
@@ -1467,6 +1474,13 @@ inline JSValue JSObject::get(ExecState* exec, unsigned propertyName) const
 
     return jsUndefined();
 }
+
+#if !defined(__M68K__)
+inline JSValue JSObject::get(ExecState* exec, uint32_t propertyName) const
+{
+    return get(exec, static_cast<unsigned>(propertyName));
+}
+#endif
 
 inline bool JSObject::putOwnDataProperty(VM& vm, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {

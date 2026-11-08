@@ -1173,7 +1173,11 @@ double timeClip(double t)
 {
     if (std::abs(t) > maxECMAScriptTime)
         return std::numeric_limits<double>::quiet_NaN();
+#if OS(AMIGA)
+    return ::trunc(t) + 0.0;
+#else
     return std::trunc(t) + 0.0;
+#endif
 }
 
 // See http://tools.ietf.org/html/rfc2822#section-3.3 for more information.

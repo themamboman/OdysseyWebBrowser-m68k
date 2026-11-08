@@ -20,6 +20,7 @@
  */
 
 #include "config.h"
+#include <math.h>
 #include "CSSCursorImageValue.h"
 
 #include "CSSImageSetValue.h"
@@ -93,10 +94,10 @@ void CSSCursorImageValue::cursorElementChanged(SVGCursorElement& cursorElement)
     // FIXME: This will override hot spot specified in CSS, which is probably incorrect.
     SVGLengthContext lengthContext(nullptr);
     m_hasHotSpot = true;
-    float x = std::round(cursorElement.x().value(lengthContext));
+    float x = ::round(cursorElement.x().value(lengthContext));
     m_hotSpot.setX(static_cast<int>(x));
 
-    float y = std::round(cursorElement.y().value(lengthContext));
+    float y = ::round(cursorElement.y().value(lengthContext));
     m_hotSpot.setY(static_cast<int>(y));
 }
 

@@ -337,4 +337,6 @@ void SigillCrashAnalyzer::dumpCodeBlock(CodeBlock* codeBlock, void* machinePC)
 #endif
 }
 
+#undef log
+
 } // namespace JSC

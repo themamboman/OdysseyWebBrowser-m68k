@@ -115,6 +115,8 @@ public:
     using PlatformSuspendError = kern_return_t;
 #elif USE(PTHREADS)
     using PlatformSuspendError = int;
+#elif OS(AMIGA)
+    using PlatformSuspendError = int;
 #elif OS(WINDOWS)
     using PlatformSuspendError = DWORD;
 #endif
@@ -207,7 +209,7 @@ protected:
     // Internal platform-specific Thread establishment implementation.
     bool establishHandle(NewThreadContext*);
 
-#if USE(PTHREADS)
+#if USE(PTHREADS) || OS(AMIGA)
     void establishPlatformSpecificHandle(PlatformThreadHandle);
 #else
     void establishPlatformSpecificHandle(PlatformThreadHandle, ThreadIdentifier);
@@ -284,7 +286,11 @@ protected:
     WordLock m_mutex;
     StackBounds m_stack { StackBounds::emptyBounds() };
     Vector<std::weak_ptr<ThreadGroup>> m_threadGroups;
+#if OS(AMIGA)
+    PlatformThreadHandle m_handle { 0 };
+#else
     PlatformThreadHandle m_handle;
+#endif
 #if OS(WINDOWS)
     ThreadIdentifier m_id { 0 };
 #elif OS(DARWIN)

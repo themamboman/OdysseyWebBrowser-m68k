@@ -240,7 +240,8 @@ ALWAYS_INLINE CharType* StringBuilder::appendUninitialized(unsigned length)
     ASSERT(length);
 
     // Calculate the new size of the builder after appending.
-    CheckedInt32 requiredLength = m_length + length;
+    CheckedInt32 requiredLength = m_length;
+    requiredLength += CheckedInt32(length);
     if (requiredLength.hasOverflowed()) {
         didOverflow();
         return nullptr;
@@ -300,7 +301,8 @@ void StringBuilder::append(const UChar* characters, unsigned length)
         }
 
         // Calculate the new size of the builder after appending.
-        CheckedInt32 requiredLength = m_length + length;
+        CheckedInt32 requiredLength = m_length;
+        requiredLength += CheckedInt32(length);
         if (requiredLength.hasOverflowed())
             return didOverflow();
         

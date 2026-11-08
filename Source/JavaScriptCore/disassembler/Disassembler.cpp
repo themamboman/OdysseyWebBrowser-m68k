@@ -28,6 +28,21 @@
 
 #include "MacroAssemblerCodeRef.h"
 #include <wtf/Condition.h>
+#define _GNU_SOURCE
+#include <cstring>
+
+namespace JSC {
+
+static inline char* disasm_strdup(const char* str)
+{
+    size_t len = std::strlen(str) + 1;
+    char* copy = static_cast<char*>(std::malloc(len));
+    if (copy)
+        std::memcpy(copy, str, len);
+    return copy;
+}
+
+} // namespace JSC
 #include <wtf/DataLog.h>
 #include <wtf/Deque.h>
 #include <wtf/Lock.h>
@@ -131,7 +146,7 @@ void disassembleAsynchronously(
     const CString& header, const MacroAssemblerCodeRef<DisassemblyPtrTag>& codeRef, size_t size, const char* prefix)
 {
     std::unique_ptr<DisassemblyTask> task = std::make_unique<DisassemblyTask>();
-    task->header = strdup(header.data()); // Yuck! We need this because CString does racy refcounting.
+    task->header = disasm_strdup(header.data()); // Yuck! We need this because CString does racy refcounting.
     task->codeRef = codeRef;
     task->size = size;
     task->prefix = prefix;

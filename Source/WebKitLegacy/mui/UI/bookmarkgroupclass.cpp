@@ -2151,7 +2151,7 @@ DEFSMETHOD(Search)
 {
     GETDATA;
     data->nofocuschange = TRUE;
-    DoMethodA(data->lt_bookmark, (_Msg_*)msg);
+    DoMethodA(data->lt_bookmark, (Msg)msg);
     data->nofocuschange = FALSE;
 
     return 0;

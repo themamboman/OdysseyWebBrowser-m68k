@@ -36,7 +36,6 @@
 #include "markup.h"
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <dirent.h>
 #include <wtf/text/CString.h>
 #include "SharedBuffer.h"
 

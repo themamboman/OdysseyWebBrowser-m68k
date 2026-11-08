@@ -140,7 +140,7 @@ void DirectArguments::unmapArgument(VM& vm, unsigned index)
 void DirectArguments::copyToArguments(ExecState* exec, VirtualRegister firstElementDest, unsigned offset, unsigned length)
 {
     if (!m_mappedArguments) {
-        unsigned limit = std::min(length + offset, m_length);
+        unsigned limit = std::min(length + offset, static_cast<unsigned>(m_length));
         unsigned i;
         VirtualRegister start = firstElementDest - offset;
         for (i = offset; i < limit; ++i)

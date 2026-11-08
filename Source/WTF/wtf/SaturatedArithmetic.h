@@ -39,7 +39,14 @@
 inline bool signedAddOverflows(int32_t a, int32_t b, int32_t& result)
 {
 #if COMPILER_HAS_CLANG_BUILTIN(__builtin_sadd_overflow) && !(defined __clang_major__ && __clang_major__ < 7)
-    return __builtin_sadd_overflow(a, b, &result);
+    // __builtin_sadd_overflow specifically takes `int*` (there's a separate __builtin_saddl_overflow
+    // for `long`); on targets where int32_t is a typedef for `long` rather than `int`, going through
+    // `&result` directly would pass the wrong pointer type. Route through a plain `int` instead --
+    // a no-op on every platform where int32_t already is int.
+    int intResult;
+    bool overflowed = __builtin_sadd_overflow(a, b, &intResult);
+    result = intResult;
+    return overflowed;
 #else
     uint32_t ua = a;
     uint32_t ub = b;
@@ -71,7 +78,11 @@ inline int32_t saturatedAddition(int32_t a, int32_t b)
 inline bool signedSubtractOverflows(int32_t a, int32_t b, int32_t& result)
 {
 #if COMPILER_HAS_CLANG_BUILTIN(__builtin_ssub_overflow) && !(defined __clang_major__ && __clang_major__ < 7)
-    return __builtin_ssub_overflow(a, b, &result);
+    // See the comment in signedAddOverflows() above re: int32_t vs `long` and __builtin_ssub_overflow.
+    int intResult;
+    bool overflowed = __builtin_ssub_overflow(a, b, &intResult);
+    result = intResult;
+    return overflowed;
 #else
     uint32_t ua = a;
     uint32_t ub = b;

@@ -34,7 +34,7 @@
 #include <arpa/inet.h>
 #endif
 
-#if OS(WINDOWS)
+#if OS(WINDOWS) || PLATFORM(MUI)
 
 namespace WTF {
 inline uint32_t wswap32(uint32_t x) { return ((x & 0xffff0000) >> 16) | ((x & 0x0000ffff) << 16); }
@@ -42,6 +42,9 @@ inline uint32_t bswap32(uint32_t x) { return ((x & 0xff000000) >> 24) | ((x & 0x
 inline uint16_t bswap16(uint16_t x) { return ((x & 0xff00) >> 8) | ((x & 0x00ff) << 8); }
 } // namespace WTF
 
+// This port's libc (<arpa/inet.h>/<netinet/in.h> stubs) doesn't declare ntohl/htonl/ntohs/htons,
+// so PLATFORM(MUI) gets the same global-namespace fallback implementations OS(WINDOWS) uses below
+// (not OS(UNIX), since this target isn't one and the #include above is skipped for it).
 #if CPU(BIG_ENDIAN)
 inline uint16_t ntohs(uint16_t x) { return x; }
 inline uint16_t htons(uint16_t x) { return x; }
@@ -59,4 +62,4 @@ inline uint32_t ntohl(uint32_t x) { return WTF::bswap32(x); }
 inline uint32_t htonl(uint32_t x) { return WTF::bswap32(x); }
 #endif
 
-#endif // OS(WINDOWS)
+#endif // OS(WINDOWS) || PLATFORM(MUI)

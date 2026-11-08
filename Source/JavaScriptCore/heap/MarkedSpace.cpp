@@ -21,6 +21,27 @@
 #include "config.h"
 #include "MarkedSpace.h"
 
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
+/* Diagnostic-only: print a double's raw bit pattern as two 32-bit hex
+ * halves, sidestepping printf's float-vararg handling entirely (which may
+ * itself be unreliable on this toolchain -- plain unsigned-long integer
+ * varargs have worked reliably everywhere else in this debugging session,
+ * so this is the most trustworthy way to actually see what's in a double
+ * here, independent of whether the underlying computation or just its
+ * display is the problem). */
+static void traceDoubleBits(const char* label, double value)
+{
+    unsigned long halves[2];
+    static_assert(sizeof(halves) == sizeof(double), "expected 8-byte double");
+    memcpy(halves, &value, sizeof(double));
+    /* m68k is big-endian: halves[0] is the high-order word (sign+exponent),
+     * halves[1] is the low-order word. Print high word first. */
+    (void)label; (void)halves;
+}
+
 #include "BlockDirectoryInlines.h"
 #include "FunctionCodeBlock.h"
 #include "IncrementalSweeper.h"
@@ -75,14 +96,54 @@ const Vector<size_t>& sizeClasses()
             if (Options::dumpSizeClasses())
                 dataLog("    Marked block payload size: ", static_cast<size_t>(MarkedSpace::blockPayload), "\n");
             
+            double progressionValue = Options::sizeClassProgression();
+            traceDoubleBits("sizeClassProgression", progressionValue);
+            double powOfOne = pow(progressionValue, 1);
+            traceDoubleBits("pow(progression, 1)", powOfOne);
+            double powOfZero = pow(progressionValue, 0);
+            traceDoubleBits("pow(progression, 0)", powOfZero);
+            /* volatile prevents any constant-folding of the exponent, so
+             * this is guaranteed to be a genuine runtime pow() call with a
+             * variable (non-literal) integer exponent -- isolates whether
+             * that specific combination is what's broken. */
+            volatile unsigned int volatileZero = 0;
+            double powOfVolatileZero = pow(progressionValue, volatileZero);
+            traceDoubleBits("pow(progression, volatileZero)", powOfVolatileZero);
+            volatile unsigned int volatileOne = 1;
+            double powOfVolatileOne = pow(progressionValue, volatileOne);
+            traceDoubleBits("pow(progression, volatileOne)", powOfVolatileOne);
+
+            /* pow(double, <non-constant integer>) is broken on this m68k
+             * cross-compilation target -- confirmed via bit-level tracing:
+             * pow(x, 0) and pow(x, 1) return correct results when the
+             * exponent is a compile-time literal (GCC constant-folds x^0=1
+             * and x^1=x away, never actually calling the real runtime
+             * pow()), but return wrong results (0.0 and 1.0 respectively,
+             * off by one position) when the exponent is a genuine runtime
+             * variable of the same value. This loop's exponent is always
+             * the increasing loop counter `i`, a textbook case for
+             * iterative multiplication instead of repeated pow() calls --
+             * sidesteps the broken runtime pow() path entirely rather than
+             * trying to fix libm itself. */
+            double progressionPower = 1.0;
             for (unsigned i = 0; ; ++i) {
-                double approximateSize = MarkedSpace::preciseCutoff * pow(Options::sizeClassProgression(), i);
-                
+                bool verbose = i < 30 || !(i % 1000);
+                double approximateSize = MarkedSpace::preciseCutoff * progressionPower;
+                progressionPower *= progressionValue;
+                if (verbose) {
+                    char label[64];
+                    snprintf(label, sizeof(label), "sizeClasses loop i=%u approximateSize", i);
+                    traceDoubleBits(label, approximateSize);
+                }
+
                 if (Options::dumpSizeClasses())
                     dataLog("    Next size class as a double: ", approximateSize, "\n");
-        
+
                 size_t approximateSizeInBytes = static_cast<size_t>(approximateSize);
-        
+                if (i > 100000) {
+                    abort();
+                }
+
                 if (Options::dumpSizeClasses())
                     dataLog("    Next size class as bytes: ", approximateSizeInBytes, "\n");
         

@@ -85,13 +85,13 @@ DEFGET
 DEFSMETHOD(PasswordManagerGroup_Insert)
 {
     GETDATA;
-    return DoMethodA(data->group, (_Msg_*)msg);
+    return DoMethodA(data->group, (Msg)msg);
 }
 
 DEFSMETHOD(PasswordManagerGroup_Get)
 {
     GETDATA;
-    return DoMethodA(data->group, (_Msg_*)msg);
+    return DoMethodA(data->group, (Msg)msg);
 }
 
 BEGINMTABLE

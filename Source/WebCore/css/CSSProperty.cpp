@@ -29,8 +29,18 @@
 namespace WebCore {
 
 struct SameSizeAsCSSProperty {
+#if CPU(M68K)
+    // m68k doesn't pad a pointer out to a 4-byte boundary when it's preceded by a narrower
+    // field (no 4-byte alignment requirement for data), so CSSProperty's uint16_t-based
+    // StylePropertyMetadata bitfield packs directly against the following pointer instead of
+    // being padded to 4 bytes first. This shadow struct mirrors that real packing on this
+    // platform; the assertion below still catches any actual growth of CSSProperty.
+    uint16_t bitfields;
+    void* value;
+#else
     uint32_t bitfields;
     void* value;
+#endif
 };
 
 COMPILE_ASSERT(sizeof(CSSProperty) == sizeof(SameSizeAsCSSProperty), CSSProperty_should_stay_small);

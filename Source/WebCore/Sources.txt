@@ -2502,6 +2502,11 @@ xml/XSLTProcessor.cpp
 xml/XSLTProcessorLibxslt.cpp
 xml/XSLTUnicodeSort.cpp
 
+// Agent B's libxml2 stub (agent-b-stubs/libxml2) doesn't implement the real SAX push-parser API
+// these need (xmlSAXHandler, xmlParserCtxt internals, xmlCreatePushParserCtxt, xmlParseChunk,
+// etc). A real libxml2 port for m68k-amigaos has been assigned to another agent -- see
+// STATUS.md. Piggybacking on ENABLE_XSLT here since it's already off for the same root cause
+// (fake libxml2) and this keeps the exclusion easy to find and revert once that lands.
 xml/parser/XMLDocumentParser.cpp
 xml/parser/XMLDocumentParserLibxml2.cpp
 xml/parser/XMLDocumentParserScope.cpp
