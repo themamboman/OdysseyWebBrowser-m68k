@@ -7,6 +7,9 @@
 #include <stdint.h>
 #include <string.h>
 
+// OutOfMemoryAmiga.cpp: asks the user to retry or stop OWB instead of returning NULL.
+extern "C" bool owbOutOfMemory(size_t size);
+
 namespace WTF {
 
 namespace {
@@ -25,9 +28,11 @@ void* allocatePages(size_t bytes)
         return nullptr;
 
     ULONG allocationSize = static_cast<ULONG>(bytes + overhead);
-    APTR base = AllocMem(allocationSize, MEMF_ANY | MEMF_CLEAR);
-    if (!base)
-        return nullptr;
+    APTR base;
+    while (!(base = AllocMem(allocationSize, MEMF_ANY | MEMF_CLEAR))) {
+        if (!owbOutOfMemory(allocationSize))
+            return nullptr;
+    }
 
     uintptr_t alignedAddress = (reinterpret_cast<uintptr_t>(base) + sizeof(AllocationHeader) + pageSize - 1)
         & ~(static_cast<uintptr_t>(pageSize) - 1);

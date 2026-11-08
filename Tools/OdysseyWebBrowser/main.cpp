@@ -28,6 +28,7 @@
  */
 
 
+#include <new>
 #include <cairo.h>
 
 #include <proto/timer.h>
@@ -889,6 +890,13 @@ static void owbFatalSignal(int sig)
 	Wait(0); /* no exit, no teardown */
 }
 
+/* Source/WTF/wtf/amiga/OutOfMemoryAmiga.cpp: a failed allocation shows a Retry / Stop OWB
+ * requester instead of letting WebKit write through a NULL pointer. */
+#if defined(__AMIGAOS3__)
+extern "C" void owbOutOfMemoryInit(void);
+extern "C" void owbOutOfMemoryNewHandler(void);
+#endif
+
 int main (int argc, char* argv[])
 {
 	__init_amissl();
@@ -908,6 +916,10 @@ int main (int argc, char* argv[])
 	signal(SIGILL, owbFatalSignal);
 	signal(SIGFPE, owbFatalSignal);
 	signal(SIGTERM, owbFatalSignal);
+#if defined(__AMIGAOS3__)
+	owbOutOfMemoryInit();
+	std::set_new_handler(owbOutOfMemoryNewHandler);
+#endif
 
 	setlocale(LC_TIME, "C");
 	setlocale(LC_NUMERIC, "C");

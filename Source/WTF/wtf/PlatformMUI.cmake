@@ -17,6 +17,7 @@ if (WEBKIT_TARGET_AMIGAOS3)
     set(WTF_AMIGA_ICU_INCLUDE_DIR "${WTF_DIR}/icu")
     list(APPEND WTF_SOURCES
         amiga/OSAllocatorAmiga.cpp
+        amiga/OutOfMemoryAmiga.cpp
         amiga/ThreadingAmiga.cpp
         amiga/FileSystemAmiga.cpp
         "${WEBKIT_AMIGA_MULTITASK_LIBRARY_ROOT}/multitask_lib.c"

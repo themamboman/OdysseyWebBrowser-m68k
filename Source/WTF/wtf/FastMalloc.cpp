@@ -119,6 +119,13 @@ TryMallocReturnValue tryFastZeroedMalloc(size_t n)
 #include <clib/debug_protos.h>
 #endif
 
+#if defined(__AMIGAOS3__)
+// Source/WTF/wtf/amiga/OutOfMemoryAmiga.cpp: WebKit never checks these allocations, so a
+// failure must not return NULL. owbOutOfMemory() asks the user to retry or stop OWB.
+extern "C" bool owbOutOfMemory(size_t size);
+extern "C" bool owbSimulateOutOfMemory(size_t size);
+#endif
+
 namespace WTF {
 
 bool isFastMallocEnabled()
@@ -200,7 +207,8 @@ retry:
 #if OS(AROS)
     p = allocator_getmem_aligned(size, alignment);
 #elif defined(__AMIGAOS3__)
-    p = amigaAlignedMalloc(alignment, size ? size : 2);
+    if (!owbSimulateOutOfMemory(size))
+        p = amigaAlignedMalloc(alignment, size ? size : 2);
 #elif OS(AMIGA)
     p = memalign(alignment, size ? size : 2);
 #else
@@ -219,6 +227,10 @@ retry:
 #if OS(MORPHOS)
         kprintf("fastAlignedMalloc: Failed to allocate %lu bytes. Happy crash sponsored by WebKit will follow.\n", n ? n : 2);
         if(morphos_crash(size ? size : 2))
+            goto retry;
+#endif
+#if defined(__AMIGAOS3__)
+        if (owbOutOfMemory(size ? size : 2))
             goto retry;
 #endif
     }
@@ -265,7 +277,11 @@ void* fastMalloc(size_t n)
 {
     ASSERT_IS_WITHIN_LIMIT(n);
 retry:
+#if defined(__AMIGAOS3__)
+    void* result = owbSimulateOutOfMemory(n) ? nullptr : malloc(n ? n : 2);
+#else
     void* result = malloc(n ? n : 2);
+#endif
     if (!result)
     {
 #if OS(AROS)
@@ -278,6 +294,10 @@ retry:
 #if OS(MORPHOS)
         kprintf("fastMalloc: Failed to allocate %lu bytes. Happy crash sponsored by WebKit will follow.\n", n ? n : 2);
         if(morphos_crash(n ? n : 2)) 
+            goto retry;
+#endif
+#if defined(__AMIGAOS3__)
+        if (owbOutOfMemory(n ? n : 2))
             goto retry;
 #endif
     }
@@ -295,7 +315,11 @@ void* fastCalloc(size_t n_elements, size_t element_size)
 {
     ASSERT_IS_WITHIN_LIMIT(n_elements * element_size);
 retry:
+#if defined(__AMIGAOS3__)
+    void* result = owbSimulateOutOfMemory(n_elements * element_size) ? nullptr : calloc(n_elements ? n_elements : 1, element_size ? element_size : 2);
+#else
     void* result = calloc(n_elements ? n_elements : 1, element_size ? element_size : 2);
+#endif
     if (!result)
     {
 #if OS(AROS)
@@ -308,6 +332,10 @@ retry:
 #if OS(MORPHOS)
         kprintf("fastCalloc: Failed to allocate %lu x %lu bytes. Happy crash sponsored by WebKit will follow.\n", n_elements ? n_elements : 1, element_size ? element_size : 2);
         if(morphos_crash((n_elements ? n_elements : 1)*(element_size ? element_size : 2))) 
+            goto retry;
+#endif
+#if defined(__AMIGAOS3__)
+        if (owbOutOfMemory((n_elements ? n_elements : 1) * (element_size ? element_size : 2)))
             goto retry;
 #endif
     }
@@ -324,7 +352,11 @@ void* fastRealloc(void* p, size_t n)
 {
     ASSERT_IS_WITHIN_LIMIT(n);
 retry:
+#if defined(__AMIGAOS3__)
+    void* result = owbSimulateOutOfMemory(n) ? nullptr : realloc(p, n ? n : 2);
+#else
     void* result = realloc(p, n ? n : 2);
+#endif
     if (!result)
     {
 #if OS(AROS)
@@ -337,6 +369,10 @@ retry:
 #if OS(MORPHOS)
         kprintf("fastRealloc: Failed to allocate %lu bytes. Happy crash sponsored by WebKit will follow.\n", n ? n : 2);
         if(morphos_crash(n ? n : 2))
+            goto retry;
+#endif
+#if defined(__AMIGAOS3__)
+        if (owbOutOfMemory(n ? n : 2))
             goto retry;
 #endif
     }
