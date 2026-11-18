@@ -1,8 +1,10 @@
 # Building OWB for AmigaOS 3.x (m68k)
 
-> **Work in progress.** This describes the environment the first release was built in. A
-> step-by-step guide from a clean machine, with scripts, is still to come. Expect to adapt
-> paths and to rebuild some libraries yourself.
+> **Work in progress.** This describes the environment the releases are built in. Section 4
+> (configure and build) and section 5 (releases) have been run end to end. The toolchain
+> (section 2) and the libraries (section 3 and the appendix) are recorded from the working
+> setup, not re-run from a clean machine, so expect to adapt paths and to rebuild some
+> libraries yourself. A scripted from-scratch build is still to come.
 
 OWB is cross-compiled on Linux. The build needs three things: a patched m68k-amigaos-gcc
 toolchain with clib2, a set of third-party libraries built for m68k and installed into that
@@ -104,11 +106,44 @@ m68k-amigaos-strip -o ../Dist/OWB bin/OWB
 `RelWithDebInfo` is `-O1` here (see `Source/cmake/m68k-amigaos.cmake`); the first release uses
 it. An `-O2` build also works but has not been fully tested yet.
 
+### Rebuilding after a change
+
+In an existing build directory, put the toolchain on `PATH` and build only the browser:
+
+```bash
+cd build-amiga
+export PATH=<prefix>/bin:$PATH
+cmake .          # only needed when CMake files, or the version header, changed
+nice -n 19 make -j4 OWB 2>&1 | grep -E "Error|error:|undefined"
+m68k-amigaos-strip -o ../Dist/OWB bin/OWB
+```
+
+If only an external `.a` library changed, delete `bin/OWB` first: CMake does not track them.
+Do not edit widely included headers (for example in WTF) unless you can wait for a near-full
+rebuild, which takes about an hour.
+
+### Version numbers
+
+The version shown in the About page and in `$VER` comes from
+`Source/WebKitLegacy/mui/UI/versioninfo.h`:
+
+- `OWB_RELEASE` is the release name, for example `"r2"`.
+- `OWB_RELEASE_FINAL` is `0` for test builds, which show `2.1-m68k r2-dev <commit>`, and `1`
+  for releases, which show `2.1-m68k r2`. Set it to `1` only when building a release.
+
+The build date and git commit are regenerated at every build.
+
 ## 5. Run
 
 Everything OWB needs at run time is in `Dist/`. Start it with a 64,000,000-byte stack: the
 `OWB.info` icon sets this. ICU data must be the `Resource/icudt55b/` tree of files, not a
 `.dat` file.
+
+To test the out-of-memory handling, run `setenv OWB_SIMULATE_OOM 60` in the Shell and start
+OWB from that Shell. After about 60 MB of allocations a "OWB: out of memory" requester appears
+once. For a real test, use a page that allocates a lot of JavaScript memory, but expect the
+system to become unresponsive if it uses all the RAM. Quit OWB from its menu: minimising it leaves it running with all
+its memory.
 
 For release archives, leave out `Dist/Conf` apart from `Conf/font` and `Conf/blocked.prefs`.
 
@@ -123,3 +158,50 @@ Points that cost the most time, in case you port similar code:
 - AmigaDOS `Seek()` fails past the end of a file, unlike POSIX `lseek()`; SQLite needed a patch.
 - WebKit threads must be DOS processes, with their own bsdsocket.library and AmiSSL bases.
 - Never let `fastMalloc()` return NULL to WebKit: callers write through it into low memory.
+
+## Appendix: recorded library configure lines
+
+These are the `configure` command lines recorded in the build trees of the working setup,
+with the install prefix written as `$PREFIX` (`<prefix>/m68k-amigaos`). They show which options
+were used. They have **not** been re-run from a clean machine, and some were first built with
+`-noixemul` (libnix) before the project moved to clib2, so use `-mcpu=68040 -fbaserel -fno-pic
+-mcrt=clib2` (the flags in section 2) and rebuild anything that still links against libnix. All
+use `--host=m68k-amigaos --disable-shared --enable-static`.
+
+```bash
+# libpng 1.6.58
+./configure --prefix=$PREFIX --with-zlib-prefix=$PREFIX --disable-tests --disable-tools \
+  --disable-apng CFLAGS="-mcpu=68040 -fbaserel" CPPFLAGS="-I$PREFIX/include"
+
+# libjpeg 9e
+./configure --prefix=$PREFIX --with-zlib=$PREFIX --disable-doc --disable-tests \
+  --disable-programs CFLAGS="-mcpu=68040 -fbaserel" CPPFLAGS="-I$PREFIX/include"
+
+# libxml2 2.15.1 (installed in <prefix>, not <prefix>/m68k-amigaos)
+../libxml2-2.15.1/configure --prefix=<prefix> --without-python --without-iconv \
+  --without-modules --with-zlib=$PREFIX --with-threads \
+  CFLAGS="-mcpu=68040 -fbaserel" LIBS="-lamigaposix -lm" ac_cv_search_dlopen="none required"
+
+# libxslt 1.1.42 (installed in <prefix>)
+../libxslt-1.1.42/configure --prefix=<prefix> --with-libxml-prefix=<prefix> \
+  CFLAGS="-mcpu=68040 -fbaserel" LDFLAGS="-lamigaposix -lm"
+
+# curl 8.12.1
+./configure --prefix=$PREFIX --without-libpsl --with-amissl --disable-ares \
+  --disable-threaded-resolver --disable-ldap --disable-ldaps --disable-alt-svc \
+  --disable-docs --disable-manual --disable-curltool --with-zlib=$PREFIX ac_cv_func_poll=no
+
+# ICU 55.2 (cross build: first build ICU for the host, then pass its tree)
+../icu/source/configure --prefix=<icu-install> --with-cross-build=<icu-host-build> \
+  --enable-static --disable-tests --disable-samples \
+  CFLAGS="-mcpu=68040 -fbaserel -fno-pic -mcrt=clib2 -fno-strict-aliasing -O2 -DUCONFIG_NO_TRANSLITERATION=1" \
+  CXXFLAGS="<same as CFLAGS>" LDFLAGS="-mcrt=clib2"
+```
+
+The ICU build also used a small compatibility header (`owb_icu_clib2_compat.h`, force-included
+with `-include`) that is not in this repository yet. cairo, pixman, FreeType and HarfBuzz were
+built with Meson, cross file: `c_args = ['-mcpu=68040', '-fbaserel', '-D_FORTIFY_SOURCE=0']`,
+`c_link_args = ['-lamiga', '-lm', '-lgcc']`, `system = 'amigaos'`, `cpu_family = 'm68k'`,
+`endian = 'big'`; FreeType also has a CMake build tree. zlib and bzip2 were built with their own
+Makefiles. The exact Meson options, the compatibility header and the toolchain fixes are what a
+scripted build still needs to capture.
