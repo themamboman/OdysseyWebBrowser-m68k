@@ -12,7 +12,7 @@
    "2.1-m68k (22.10.2026)"). Set OWB_RELEASE_FINAL to 1 only when building a release;
    other builds show "-dev" and the git commit ("+" = uncommitted changes). */
 #define OWB_RELEASE "r2"
-#define OWB_RELEASE_FINAL 0
+#define OWB_RELEASE_FINAL 1
 #if OWB_RELEASE_FINAL
 #define DISPLAY_VERSION VERSION "-m68k " OWB_RELEASE
 #else
