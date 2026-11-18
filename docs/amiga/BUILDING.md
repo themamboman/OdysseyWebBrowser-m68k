@@ -198,10 +198,97 @@ use `--host=m68k-amigaos --disable-shared --enable-static`.
   CXXFLAGS="<same as CFLAGS>" LDFLAGS="-mcrt=clib2"
 ```
 
-The ICU build also used a small compatibility header (`owb_icu_clib2_compat.h`, force-included
-with `-include`) that is not in this repository yet. cairo, pixman, FreeType and HarfBuzz were
-built with Meson, cross file: `c_args = ['-mcpu=68040', '-fbaserel', '-D_FORTIFY_SOURCE=0']`,
-`c_link_args = ['-lamiga', '-lm', '-lgcc']`, `system = 'amigaos'`, `cpu_family = 'm68k'`,
-`endian = 'big'`; FreeType also has a CMake build tree. zlib and bzip2 were built with their own
-Makefiles. The exact Meson options, the compatibility header and the toolchain fixes are what a
-scripted build still needs to capture.
+The ICU build also used a small compatibility header, force-included with `-include`:
+[`amiga/support/icu/owb_icu_clib2_compat.h`](../../amiga/support/icu/owb_icu_clib2_compat.h)
+(its path goes in `CFLAGS` and `CXXFLAGS` as `-include <path>`). ICU also needs `-fpermissive` in
+`CXXFLAGS`. The host build used for `--with-cross-build` was a plain
+`configure --enable-static --disable-shared --disable-tests --disable-samples`.
+
+### Meson libraries
+
+cairo, pixman and HarfBuzz were built with Meson, FreeType with CMake. All use the Meson cross
+file below (`m68k-amigaos-meson.ini`; set the compiler paths to your toolchain), and Meson
+needs a `pkg-config` that reads `.pc` files from the install prefixes below (a small wrapper
+script that sets `PKG_CONFIG_PATH` and calls the host `pkg-config` worked).
+
+```ini
+[binaries]
+c = '<prefix>/bin/m68k-amigaos-gcc'
+cpp = '<prefix>/bin/m68k-amigaos-g++'
+ar = '<prefix>/bin/m68k-amigaos-ar'
+strip = '<prefix>/bin/m68k-amigaos-strip'
+pkgconfig = '<path to the pkg-config wrapper>'
+
+[host_machine]
+system = 'amigaos'
+cpu_family = 'm68k'
+cpu = 'm68k'
+endian = 'big'
+```
+
+The options as recorded by Meson (`$LIBS` is the directory the library is installed into):
+
+```bash
+# pixman 0.44.2
+meson setup pixman-build pixman-0.44.2 --cross-file=m68k-amigaos-meson.ini \
+  -Ddefault_library=static -Db_staticpic=false -Db_pie=false -Dtests=disabled -Ddemos=disabled \
+  -Dgtk=disabled -Dlibpng=disabled -Dbuildtype=release -Dprefix=$LIBS/pixman \
+  "-Dc_args=['-mcpu=68040','-fbaserel','-fno-pic','-mcrt=clib2']" \
+  "-Dc_link_args=-mcrt=clib2 -lamiga -lm -lgcc"
+
+# HarfBuzz 8.4.0 (needs FreeType installed first)
+meson setup harfbuzz-build harfbuzz-8.4.0 --cross-file=m68k-amigaos-meson.ini \
+  -Ddefault_library=static -Db_staticpic=false -Dfreetype=enabled -Dglib=disabled \
+  -Dgobject=disabled -Dcairo=disabled -Dicu=disabled -Dgraphite2=disabled -Dgdi=disabled \
+  -Ddirectwrite=disabled -Dcoretext=disabled -Dtests=disabled -Ddocs=disabled \
+  -Dutilities=disabled -Dbenchmark=disabled -Dintrospection=disabled -Dbuildtype=release \
+  -Dprefix=$LIBS/harfbuzz \
+  "-Dc_args=['-mcpu=68040','-fbaserel','-fno-pic','-mcrt=clib2','-include','locale.h']" \
+  "-Dcpp_args=['-mcpu=68040','-fbaserel','-fno-pic','-mcrt=clib2','-include','locale.h']" \
+  "-Dc_link_args=['-mcrt=clib2','-lamiga','-lm','-lgcc']" \
+  "-Dcpp_link_args=['-mcrt=clib2','-lamiga','-lm','-lgcc']"
+
+# cairo 1.18.0 (needs FreeType, pixman, fontconfig-minimal, libpng, zlib installed first;
+# apply patches/cairo-1.18.0.patch)
+meson setup cairo-build cairo-1.18.0 --cross-file=m68k-amigaos-meson.ini \
+  -Ddefault_library=static -Db_staticpic=false -Dxlib=disabled -Dxcb=disabled -Dglib=disabled \
+  -Dfontconfig=enabled -Dfreetype=enabled -Dpng=enabled -Dzlib=enabled -Dtests=disabled \
+  -Dtee=disabled -Dspectre=disabled -Dsymbol-lookup=disabled -Dgtk2-utils=disabled \
+  -Dbuildtype=release -Dprefix=$LIBS/cairo \
+  "-Dc_args=['-mcpu=68040','-fbaserel','-fno-pic','-mcrt=clib2','-include','locale.h','-D_FORTIFY_SOURCE=0','-DCAIRO_NO_MUTEX=1','-Wno-error=incompatible-pointer-types','-Wno-error=implicit-function-declaration','-Wno-error=int-conversion']" \
+  "-Dc_link_args=-mcrt=clib2 -lamiga -lm -lgcc"
+```
+
+FreeType 2.12.1 (CMake, with the project's toolchain file or the same flags):
+
+```bash
+cmake -S freetype-2.12.1 -B freetype-build -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_TOOLCHAIN_FILE=<repo>/Source/cmake/m68k-amigaos.cmake \
+  -DCMAKE_C_FLAGS="-mcpu=68040 -fbaserel -fno-pic -mcrt=clib2" \
+  -DCMAKE_INSTALL_PREFIX=$LIBS/freetype -DFT_DISABLE_BROTLI=TRUE -DFT_DISABLE_BZIP2=TRUE \
+  -DFT_DISABLE_HARFBUZZ=TRUE -DFT_DISABLE_PNG=TRUE
+```
+
+zlib 1.3.2 and bzip2 1.0.8 were built with their own Makefiles using the same compiler
+flags. The exact commands were not recorded.
+
+## Gaps in this guide
+
+What is recorded above comes from the build trees of the working setup. These parts are **not**
+yet captured, so they have to be worked out or rebuilt:
+
+- **The toolchain build.** Only the commit numbers and the three fixes in section 2 are
+  recorded, not the full build of m68k-amigaos-gcc and clib2 from source.
+- **Copying the Meson and CMake installs into the toolchain.** The OWB CMake files expect
+  everything in `<prefix>/m68k-amigaos/{include,lib}` (headers for cairo, FreeType, fontconfig,
+  HarfBuzz, libpng, ...), except expat, SQLite, libxml2 and libxslt, which are expected in
+  `<prefix>/{include,lib}` (see `Source/cmake/OptionsMUI.cmake`). The libraries above were
+  installed into separate prefixes first (for example `cairo/install`) and copied over; the
+  exact copy commands were not recorded.
+- **Libraries first built for libnix.** libpng, libjpeg, expat, libxml2, libxslt, curl and
+  zlib were first configured with `-noixemul` before the move to clib2; the recorded lines
+  above show the original flags. Rebuild them with `-fno-pic -mcrt=clib2` and check that they
+  link.
+- **zlib and bzip2 commands, and the AmiSSL SDK installation.**
+- **A run from a clean machine.** None of section 3 has been repeated from scratch, so a
+  missing step or a changed link order is likely. Please report what you find.
